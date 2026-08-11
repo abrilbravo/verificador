@@ -8,7 +8,7 @@ import shutil
 from backend.pdf import LectorPDF
 from backend.ocr import LectorOCR
 from backend.comparador import ComparadorRemitos
-from backend.database import Database
+from backend.database_supabase import Database
 from backend.util_funciones import formatear_siniestro, obtener_usuario, limpiar_precio, sacar_iva, formatear_precio
 
 app = Flask(__name__)
@@ -29,6 +29,7 @@ if os.path.exists(ASSETS_DIR) and not os.listdir(STATIC_ASSETS):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+from backend.database_supabase import Database
 db = Database()
 
 @app.route('/assets/<path:filename>')
