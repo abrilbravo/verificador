@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas - Verificador Inteligente de Remitos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; max-width: 100%; }
+        html, body { height: 100%; overflow: auto; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #eef1f5; font-size: 13px;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            position: fixed; top: 0; bottom: 0; left: 0; z-index: 100;
+            width: 210px; background: #1A1A2E;
+            display: flex; flex-direction: column;
+            padding: 8px 0; box-shadow: 2px 0 12px rgba(0,0,0,0.12);
+        }
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 10px;
+            padding: 6px 12px 8px; border-bottom: 1px solid #2a2a4a; margin-bottom: 8px;
+        }
+        .sidebar-brand .vw-icon {
+            width: 42px; height: 42px; border-radius: 50%;
+            overflow: hidden; flex-shrink: 0; background: #1A1A2E;
+        }
+        .sidebar-brand .vw-icon img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
+        .sidebar-brand .brand-text { display: flex; flex-direction: column; }
+        .sidebar-brand .brand-text .title { font-size: 14px; font-weight: 700; color: white; line-height: 1.1; }
+        .sidebar-brand .brand-text .sub { font-size: 10px; color: #7a8aaa; line-height: 1.2; }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+        .sidebar .nav-link {
+            color: #7a8aaa !important; padding: 8px 12px; font-size: 13px; font-weight: 500;
+            border-radius: 6px; transition: all 0.2s; display: flex; align-items: center;
+            gap: 8px; text-decoration: none;
+        }
+        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .sidebar .nav-link:hover { background: rgba(255,255,255,0.08); color: white !important; }
+        .sidebar .nav-link.active { background: #2D3A6B; color: white !important; }
+        .sidebar-footer {
+            margin-top: auto; padding: 6px 12px; border-top: 1px solid #2a2a4a;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .sidebar-footer .user-icon { color: #5a6a8a; font-size: 14px; }
+        .sidebar-footer .user-name { font-size: 13px; color: #5a6a8a; }
+
+        /* ===== SIDEBAR TOGGLE ===== */
+        .sidebar-toggle { display: flex; align-items: center; justify-content: center; padding: 8px; border-top: 1px solid #2a2a4a; cursor: pointer; transition: all 0.2s; }
+        .sidebar-toggle:hover { background: rgba(255,255,255,0.05); }
+        .sidebar-toggle i { color: #7a8aaa; font-size: 14px; transition: transform 0.3s; }
+        .sidebar-toggle:hover i { color: white; }
+
+        /* ===== SIDEBAR COLLAPSED ===== */
+        .sidebar.collapsed { width: 60px; }
+        .sidebar.collapsed .brand-text { display: none; }
+        .sidebar.collapsed .nav-link span { display: none; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding: 10px; gap: 0; }
+        .sidebar.collapsed .nav-link i { width: auto; font-size: 16px; }
+        .sidebar.collapsed .sidebar-brand { justify-content: center; padding: 6px 8px 8px; }
+        .sidebar.collapsed .sidebar-footer { justify-content: center; padding: 6px 8px; }
+        .sidebar.collapsed .user-name { display: none; }
+        .sidebar.collapsed .sidebar-toggle i { transform: rotate(180deg); }
+        .sidebar.collapsed ~ main { margin-left: 60px; width: calc(100% - 60px); }
+
+        main {
+            margin-left: 210px; padding: 8px 12px; min-height: 100vh;
+            display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: #f0f2f6;
+            width: calc(100% - 210px);
+        }
+
+        .main-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 2px 0 4px; border-bottom: 1px solid #dce1e8; flex-shrink: 0;
+        }
+        .main-header h1 { font-size: 17px; font-weight: 600; margin: 0; color: #1a2332; }
+        .main-header h1 i { color: #2F80ED; margin-right: 5px; font-size: 14px; }
+        .main-header .badge-version { font-size: 10px; background: #2F80ED; color: white; padding: 1px 8px; border-radius: 10px; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; flex-shrink: 0; margin-bottom: 8px;
+        }
+        .stat-card {
+            background: white; border-radius: 10px; padding: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); text-align: center;
+            border-top: 3px solid #2F80ED;
+        }
+        .stat-card.green { border-top-color: #27AE60; }
+        .stat-card.red { border-top-color: #E74C3C; }
+        .stat-card.orange { border-top-color: #F39C12; }
+        .stat-card.purple { border-top-color: #7B2D8E; }
+        .stat-card .stat-icon { font-size: 24px; color: #aab8cc; margin-bottom: 4px; }
+        .stat-card.green .stat-icon { color: #27AE60; }
+        .stat-card.red .stat-icon { color: #E74C3C; }
+        .stat-card.orange .stat-icon { color: #F39C12; }
+        .stat-card.purple .stat-icon { color: #7B2D8E; }
+        .stat-card .stat-value { font-size: 22px; font-weight: 700; color: #1a2332; }
+        .stat-card .stat-label { font-size: 10px; color: #6a7a8a; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; margin-top: 2px; }
+
+        .chart-section {
+            background: white; border-radius: 10px; padding: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); flex: 1; min-height: 0;
+            display: flex; flex-direction: column;
+        }
+        .chart-section .cs-title { font-size: 12px; font-weight: 700; color: #1a2332; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+        .chart-section .cs-title i { color: #2F80ED; font-size: 11px; }
+
+        .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 0 10px; }
+        .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; }
+        .bar {
+            width: 100%; max-width: 50px; border-radius: 4px 4px 0 0; transition: height 0.6s ease;
+            position: relative;
+        }
+        .bar.green { background: linear-gradient(180deg, #27AE60, #1E8449); }
+        .bar.red { background: linear-gradient(180deg, #E74C3C, #C0392B); }
+        .bar.blue { background: linear-gradient(180deg, #2F80ED, #1A6BC4); }
+        .bar .bar-label {
+            position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+            font-size: 10px; font-weight: 700; color: #1a2332; white-space: nowrap;
+        }
+        .bar-group .bar-name { font-size: 9px; color: #6a7a8a; margin-top: 4px; text-align: center; }
+
+        .success-ring {
+            width: 100px; height: 100px; margin: 10px auto; position: relative;
+        }
+        .success-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .success-ring circle { fill: none; stroke-width: 8; stroke-linecap: round; }
+        .success-ring .bg { stroke: #f0f2f5; }
+        .success-ring .fill { transition: stroke-dashoffset 1s ease; }
+        .success-ring .ring-label {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 20px; font-weight: 700; color: #1a2332;
+        }
+
+        .recent-section {
+            background: white; border-radius: 10px; padding: 5px 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); flex-shrink: 0; margin-top: 8px;
+            max-height: 120px; overflow-y: auto;
+        }
+        .recent-section .rs-title { font-size: 15px; font-weight: 700; color: #1a2332; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+        .recent-section .rs-title i { color: #2F80ED; font-size: 10px; }
+        .recent-item {
+            display: flex; align-items: center; gap: 8px; padding: 3px 0;
+            border-bottom: 1px solid #f0f2f5; font-size: 11px;
+        }
+        .recent-item:last-child { border-bottom: none; }
+        .recent-item .ri-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .recent-item .ri-dot.ok { background: #27AE60; }
+        .recent-item .ri-dot.err { background: #E74C3C; }
+        .recent-item .ri-info { flex: 1; color: #3a4a6a; }
+        .recent-item .ri-patente { font-family: Consolas, monospace; font-weight: 600; color: #1a2332; min-width: 70px; }
+        .recent-item .ri-estado { font-weight: 600; min-width: 70px; }
+        .recent-item .ri-estado.ok { color: #27AE60; }
+        .recent-item .ri-estado.err { color: #E74C3C; }
+
+        .empty-state { text-align: center; padding: 30px 20px; color: #aab8cc; }
+        .empty-state i { font-size: 32px; margin-bottom: 6px; display: block; }
+        .empty-state p { font-size: 10px; }
+
+        .scrollable::-webkit-scrollbar { width: 4px; }
+        .scrollable::-webkit-scrollbar-track { background: #f0f2f5; border-radius: 2px; }
+        .scrollable::-webkit-scrollbar-thumb { background: #c0c8d4; border-radius: 2px; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 50px; }
+            .sidebar .brand-text, .sidebar .nav-link span, .sidebar-footer .user-name { display: none; }
+            .sidebar-brand { justify-content: center; padding: 8px; }
+            .sidebar .nav-link { justify-content: center; padding: 8px; }
+            .sidebar-footer { justify-content: center; }
+            main { margin-left: 50px; padding: 4px 6px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-0 h-100">
+        <div class="row g-0 h-100">
+            <nav class="sidebar">
+                <div class="sidebar-brand">
+                    <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
+                    <div class="brand-text">
+                        <span class="title">VERIFICADOR</span>
+                        <span class="sub">v3.0</span>
+                    </div>
+                </div>
+                <div class="sidebar-nav">
+                    <a class="nav-link" href="/">
+                        <i class="fas fa-file-alt"></i><span>Nuevo Remito</span>
+                    </a>
+                    <a class="nav-link" href="/verificar">
+                        <i class="fas fa-check-circle"></i><span>Verificar</span>
+                    </a>
+                    <a class="nav-link" href="/historial">
+                        <i class="fas fa-history"></i><span>Historial</span>
+                    </a>
+                    <a class="nav-link active" href="/estadisticas">
+                        <i class="fas fa-chart-bar"></i><span>Estadísticas</span>
+                    </a>
+                </div>
+                <div class="sidebar-footer">
+                    <i class="fas fa-user user-icon"></i>
+                    <span class="user-name">Volkswagen Org Sur</span>
+                </div>
+                <div class="sidebar-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-chevron-left"></i>
+                </div>
+            </nav>
+
+            <main>
+                <div class="main-header">
+                    <h1><i class="fas fa-chart-bar"></i>Estadísticas</h1>
+                    <span class="badge-version">v3.0</span>
+                </div>
+
+                <!-- STAT CARDS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total verificaciones</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-value" id="statCorrectos">0</div>
+                        <div class="stat-label">Correctos</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+                        <div class="stat-value" id="statErrores">0</div>
+                        <div class="stat-label">Con errores</div>
+                    </div>
+                    <div class="stat-card orange">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-value" id="statTiempo">0s</div>
+                        <div class="stat-label">Tiempo promedio</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+                        <div class="stat-value" id="statTasa">0%</div>
+                        <div class="stat-label">Tasa de éxito</div>
+                    </div>
+                </div>
+
+                <!-- CHARTS ROW -->
+                <div style="display:flex; gap:8px; flex:1; min-height:0;">
+                    <!-- BAR CHART -->
+                    <div class="chart-section" style="flex:2;">
+                        <div class="cs-title"><i class="fas fa-chart-bar"></i>Verificaciones por estado</div>
+                        <div class="bar-chart" id="barChart">
+                            <div class="bar-group">
+                                <div class="bar green" id="barCorrectos" style="height:0px;"><span class="bar-label">0</span></div>
+                                <div class="bar-name">Correctos</div>
+                            </div>
+                            <div class="bar-group">
+                                <div class="bar red" id="barErrores" style="height:0px;"><span class="bar-label">0</span></div>
+                                <div class="bar-name">Con errores</div>
+                            </div>
+                            <div class="bar-group">
+                                <div class="bar blue" id="barTotal" style="height:0px;"><span class="bar-label">0</span></div>
+                                <div class="bar-name">Total</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUCCESS RING -->
+                    <div class="chart-section" style="flex:1; align-items:center; justify-content:center;">
+                        <div class="cs-title"><i class="fas fa-bullseye"></i>Tasa de éxito</div>
+                        <div class="success-ring">
+                            <svg viewBox="0 0 36 36">
+                                <circle class="bg" cx="18" cy="18" r="14"></circle>
+                                <circle class="fill" id="ringFill" cx="18" cy="18" r="14"
+                                    stroke="#27AE60" stroke-dasharray="87.96" stroke-dashoffset="87.96"></circle>
+                            </svg>
+                            <div class="ring-label" id="ringLabel">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RECENT -->
+                <div class="recent-section scrollable" id="recentSection">
+                    <div class="rs-title"><i class="fas fa-clock"></i>Últimas verificaciones</div>
+                    <div id="recentList">
+                        <div class="empty-state"><i class="fas fa-inbox"></i><p>Sin datos</p></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function toggleSidebar() {
+            const sb = document.querySelector('.sidebar');
+            sb.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sb.classList.contains('collapsed'));
+        }
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.querySelector('.sidebar').classList.add('collapsed');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { cargarEstadisticas(); });
+
+        function cargarEstadisticas() {
+            Promise.all([
+                fetch('/api/estadisticas').then(r => r.json()),
+                fetch('/api/historial?limite=20').then(r => r.json())
+            ])
+            .then(([statsData, histData]) => {
+                if (statsData.estadisticas) renderStats(statsData.estadisticas);
+                if (histData.historial) renderRecent(histData.historial);
+            })
+            .catch(() => {});
+        }
+
+        function renderStats(s) {
+            document.getElementById('statTotal').textContent = s.total || 0;
+            document.getElementById('statCorrectos').textContent = s.correctos || 0;
+            document.getElementById('statErrores').textContent = s.con_errores || 0;
+            document.getElementById('statTiempo').textContent = (s.tiempo_promedio || 0) + 's';
+            document.getElementById('statTasa').textContent = (s.tasa_exito || 0) + '%';
+
+            // Bar chart
+            const total = s.total || 1;
+            const maxH = 100;
+            const hCorrectos = Math.max(((s.correctos || 0) / total) * maxH, s.correctos > 0 ? 8 : 0);
+            const hErrores = Math.max(((s.con_errores || 0) / total) * maxH, s.con_errores > 0 ? 8 : 0);
+            const hTotal = maxH;
+
+            setTimeout(() => {
+                const barC = document.getElementById('barCorrectos');
+                barC.style.height = hCorrectos + 'px';
+                barC.querySelector('.bar-label').textContent = s.correctos || 0;
+
+                const barE = document.getElementById('barErrores');
+                barE.style.height = hErrores + 'px';
+                barE.querySelector('.bar-label').textContent = s.con_errores || 0;
+
+                const barT = document.getElementById('barTotal');
+                barT.style.height = hTotal + 'px';
+                barT.querySelector('.bar-label').textContent = s.total || 0;
+            }, 100);
+
+            // Success ring
+            const tasa = s.tasa_exito || 0;
+            const circumference = 87.96;
+            const offset = circumference - (circumference * tasa / 100);
+            setTimeout(() => {
+                const ring = document.getElementById('ringFill');
+                ring.style.strokeDashoffset = offset;
+                ring.style.stroke = tasa >= 80 ? '#27AE60' : tasa >= 50 ? '#F39C12' : '#E74C3C';
+                document.getElementById('ringLabel').textContent = tasa + '%';
+                document.getElementById('ringLabel').style.color = ring.style.stroke;
+            }, 200);
+        }
+
+        function renderRecent(items) {
+            const container = document.getElementById('recentList');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>Sin datos recientes</p></div>';
+                return;
+            }
+            container.innerHTML = '';
+            items.forEach(item => {
+                const isOk = item.estado === 'Correcto';
+                const div = document.createElement('div');
+                div.className = 'recent-item';
+                div.innerHTML = `
+                    <div class="ri-dot ${isOk ? 'ok' : 'err'}"></div>
+                    <div class="ri-patente">${item.patente || '-'}</div>
+                    <div class="ri-info">${item.fecha} ${item.hora} | Ord: ${item.orden || '-'}</div>
+                    <div class="ri-estado ${isOk ? 'ok' : 'err'}">${item.estado} (${item.errores || 0} err)</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
