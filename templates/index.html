@@ -668,9 +668,9 @@
                 <span class="action-ico"><i class="fas fa-database"></i></span>
                 <span class="action-text"><b>DATOS</b><small>Ver / editar datos</small></span>
             </button>
-            <button class="action-card verde" onclick="copiarRepuestosYPrecios()">
-                <span class="action-ico"><i class="fas fa-copy"></i></span>
-                <span class="action-text"><b>COPIAR TODO</b><small>Copiar al portapapeles</small></span>
+            <button class="action-card verde" onclick="copiarDatosAutoleader()">
+                <span class="action-ico"><i class="fas fa-file-export"></i></span>
+                <span class="action-text"><b>AUTOLEADER</b><small>Copiar datos para Autoleader</small></span>
             </button>
         </section>
 
@@ -1180,19 +1180,10 @@
             });
         }
 
-        async function copiarRepuestosYPrecios() {
-            if (repuestosData.length === 0) {
-                Swal.fire('Info', 'No hay repuestos', 'info');
-                return;
-            }
-            let texto = 'CÓDIGO | CANT. | s/IVA\n' + '='.repeat(50) + '\n';
-            repuestosData.forEach(rep => {
-                texto += `${rep.codigo || ''} | ${rep.cantidad || '1'} | $${(rep.precio_sin_iva||0).toFixed(2)}\n`;
-            });
-            texto += '\n' + '='.repeat(50) + '\n';
-            texto += `TOTAL s/IVA: ${document.getElementById('totalSinIva').textContent}  |  c/IVA: ${document.getElementById('totalConIva').textContent}\n`;
-            texto += `Repuestos: ${repuestosData.length}`;
-            await copiarTexto(texto, 'Todo copiado');
+        async function copiarDatosAutoleader() {
+            const get = id => document.getElementById(id).textContent;
+            const texto = `REMITO: ${get('remitoDisplay')}\nORDEN: ${get('ordenDisplay')}\nSINIESTRO: ${get('siniestroDisplay')}\nMODELO: ${get('modeloDisplay')}\nPATENTE: ${get('patenteDisplay')}`;
+            await copiarTexto(texto, 'Datos copiados para Autoleader');
         }
     </script>
 </body>
