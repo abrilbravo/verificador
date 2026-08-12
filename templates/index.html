@@ -272,24 +272,6 @@
             transition: all .18s ease;
         }
         .main-header .icon-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); }
-        .main-header .icon-btn .dot {
-            position: absolute;
-            top: 8px; right: 9px;
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: var(--red);
-            border: 2px solid var(--surface);
-        }
-        .main-header .avatar {
-            width: 40px; height: 40px;
-            border-radius: 11px;
-            background: linear-gradient(135deg, #004D98, #00A2E8);
-            color: #fff;
-            font-family: 'VWHead', sans-serif;
-            font-size: 15px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,77,152,.35);
-        }
 
         /* ===== ACCIONES ===== */
         .acciones {
@@ -672,10 +654,6 @@
                 <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" title="Modo oscuro / claro">
                     <i class="fas fa-moon"></i>
                 </button>
-                <button class="icon-btn" title="Notificaciones">
-                    <i class="fas fa-bell"></i><span class="dot"></span>
-                </button>
-                <div class="avatar" title="Usuario">RA</div>
             </div>
         </header>
 
