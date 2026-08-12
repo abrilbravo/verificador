@@ -60,14 +60,25 @@ def _limpiar_texto_rep(texto):
 
 
 def formatear_codigo(codigo):
-    """Formatea un código de repuesto VW a 3-3-3 (con sufijo si tiene más de 9 caracteres).
-    Ej: '3C8853856F' -> '3C8-853-856-F', '5U08536651NN' -> '5U0-853-665-1NN'."""
+    """Formatea un código de repuesto VW a 3-3-3 (y el resto en grupos de a 3
+    desde el final, regla xxx-xxx-xxx-xx-xxx).
+    Ej: '3C8853856F' -> '3C8-853-856-F', '5U08536651NN' -> '5U0-853-665-1NN',
+        '2H6823033DXGRU' -> '2H6-823-033-DX-GRU'."""
     codigo = re.sub(r'[^A-Z0-9]', '', str(codigo).upper())
     if len(codigo) <= 3:
         return codigo
     if len(codigo) <= 9:
         return '-'.join(codigo[i:i + 3] for i in range(0, len(codigo), 3))
-    return f"{codigo[:3]}-{codigo[3:6]}-{codigo[6:9]}-{codigo[9:]}"
+    base = codigo[:9]
+    resto = codigo[9:]
+    if len(resto) <= 3:
+        return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{resto}"
+    inicio = len(resto) % 3
+    if inicio == 0:
+        grupos = [resto[i:i + 3] for i in range(0, len(resto), 3)]
+    else:
+        grupos = [resto[:inicio]] + [resto[i:i + 3] for i in range(inicio, len(resto), 3)]
+    return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{'-'.join(grupos)}"
 
 
 def _extraer_sufijo(resto):
