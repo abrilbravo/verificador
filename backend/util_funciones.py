@@ -28,11 +28,15 @@ def formatear_siniestro(siniestro):
 
 
 def sacar_iva(precio):
-    """Saca el IVA de un precio (21%)"""
+    """Saca el IVA de un precio (21%). Si es $1 o menos (precio de referencia),
+    no se le saca el IVA."""
     try:
         if isinstance(precio, str):
             precio = precio.replace('.', '').replace(',', '.')
-        return round(float(precio) / 1.21, 2)
+        precio = float(precio)
+        if precio <= 1:
+            return round(precio, 2)
+        return round(precio / 1.21, 2)
     except:
         return 0.0
 
