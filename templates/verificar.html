@@ -723,8 +723,15 @@
             const formData = new FormData();
             formData.append('file', file);
             Swal.fire({ title: 'Procesando PDF...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            fetch('/api/cargar_pdf', { method: 'POST', body: formData })
-            .then(r => r.json())
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            
+            fetch('/api/cargar_pdf', { method: 'POST', body: formData, signal: controller.signal })
+            .then(r => {
+                clearTimeout(timeoutId);
+                return r.json();
+            })
             .then(data => {
                 Swal.close();
                 if (data.error) { Swal.fire('Error', data.error, 'error'); return; }
@@ -734,7 +741,15 @@
                 actualizarBotones();
                 Swal.fire({ icon: 'success', title: 'PDF cargado', text: `${(data.datos.repuestos||[]).length} repuestos`, timer: 1200, showConfirmButton: false });
             })
-            .catch(() => { Swal.close(); Swal.fire('Error', 'Error al procesar el PDF', 'error'); });
+            .catch(err => {
+                clearTimeout(timeoutId);
+                Swal.close();
+                if (err.name === 'AbortError') {
+                    Swal.fire('Timeout', 'El procesamiento del PDF tardó demasiado.', 'error');
+                } else {
+                    Swal.fire('Error', 'Error al procesar el PDF', 'error');
+                }
+            });
             input.value = '';
         }
 
@@ -743,9 +758,16 @@
             if (!file) return;
             const formData = new FormData();
             formData.append('file', file);
-            Swal.fire({ title: 'Procesando imagen (OCR)...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            fetch('/api/cargar_imagen', { method: 'POST', body: formData })
-            .then(r => r.json())
+            Swal.fire({ title: 'Procesando imagen (OCR)...', text: 'Esto puede tardar unos segundos', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            
+            fetch('/api/cargar_imagen', { method: 'POST', body: formData, signal: controller.signal })
+            .then(r => {
+                clearTimeout(timeoutId);
+                return r.json();
+            })
             .then(data => {
                 Swal.close();
                 if (data.error) { Swal.fire('Error', data.error, 'error'); return; }
@@ -760,7 +782,15 @@
                 actualizarBotones();
                 Swal.fire({ icon: 'success', title: 'OCR procesado', text: `${repuestosOcr.length} repuestos detectados`, timer: 1200, showConfirmButton: false });
             })
-            .catch(() => { Swal.close(); Swal.fire('Error', 'Error al procesar la imagen', 'error'); });
+            .catch(err => {
+                clearTimeout(timeoutId);
+                Swal.close();
+                if (err.name === 'AbortError') {
+                    Swal.fire('Timeout', 'El procesamiento OCR tardó demasiado. Intentá con una imagen más chica.', 'error');
+                } else {
+                    Swal.fire('Error', 'Error al procesar la imagen', 'error');
+                }
+            });
             input.value = '';
         }
 

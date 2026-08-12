@@ -34,9 +34,15 @@ class LectorOCR:
             "remito": "",
             "repuestos": []
         }
-        self.engine = RapidOCR()
+        try:
+            self.engine = RapidOCR()
+        except Exception as e:
+            print(f"Error al inicializar RapidOCR: {e}")
+            self.engine = None
 
     def abrir_imagen(self, ruta_imagen):
+        if self.engine is None:
+            raise Exception("El motor OCR no está disponible")
         try:
             resultado = self.engine(ruta_imagen)
 
@@ -77,6 +83,8 @@ class LectorOCR:
 
         except Exception as e:
             print(f"Error al procesar imagen: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def _normalizar_patente(self, texto):
