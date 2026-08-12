@@ -7,293 +7,706 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; max-width: 100%; }
-        html, body { height: 100%; overflow: auto; }
-        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #eef1f5; font-size: 13px; }
+        @font-face {
+            font-family: 'VWHead';
+            src: url('/assets/VWHeadBold.otf') format('opentype');
+            font-weight: 700;
+        }
+        @font-face {
+            font-family: 'VWText';
+            src: url('/assets/VWTextRegular.otf') format('opentype');
+            font-weight: 400;
+        }
+        @font-face {
+            font-family: 'VWText';
+            src: url('/assets/VWTextBold.otf') format('opentype');
+            font-weight: 700;
+        }
+
+        :root {
+            --bg: #F2F5F9;
+            --surface: #FFFFFF;
+            --surface-2: #F7F9FC;
+            --border: #E3E8F0;
+            --text: #16233B;
+            --text-muted: #6B7A94;
+            --primary: #004D98;
+            --primary-dark: #003A73;
+            --primary-soft: #E9F1FB;
+            --green: #1F9D55;
+            --green-soft: #E8F7EE;
+            --red: #E03131;
+            --red-soft: #FDEAEA;
+            --amber: #E8850C;
+            --amber-soft: #FFF2DF;
+            --purple: #7B2D8E;
+            --purple-soft: #F3E8FD;
+            --sidebar-bg: #0B1B33;
+            --sidebar-line: #17294A;
+            --sidebar-text: #8CA2C4;
+            --shadow: 0 1px 3px rgba(16,32,62,.06), 0 8px 24px rgba(16,32,62,.06);
+            --shadow-soft: 0 1px 2px rgba(16,32,62,.05);
+            --radius: 14px;
+            --mono: 'Consolas', 'Courier New', monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0D1526;
+            --surface: #16223A;
+            --surface-2: #1B2944;
+            --border: #23345A;
+            --text: #E7EDF7;
+            --text-muted: #93A5C4;
+            --primary-soft: #16304F;
+            --green-soft: #123420;
+            --red-soft: #3A1717;
+            --amber-soft: #3A2A10;
+            --purple-soft: #2E1D3E;
+            --shadow: 0 1px 3px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+            --shadow-soft: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: 'VWText', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            overflow-x: hidden;
+        }
 
         /* ===== SIDEBAR ===== */
-        .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; width: 210px; background: #1A1A2E; display: flex; flex-direction: column; padding: 8px 0; box-shadow: 2px 0 12px rgba(0,0,0,0.12); }
-        .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 12px 8px; border-bottom: 1px solid #2a2a4a; margin-bottom: 8px; }
-        .sidebar-brand .vw-icon { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #1A1A2E; }
-.sidebar-brand .vw-icon img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
-        .sidebar-brand .brand-text { display: flex; flex-direction: column; }
-        .sidebar-brand .brand-text .title { font-size: 14px; font-weight: 700; color: white; line-height: 1.1; }
-        .sidebar-brand .brand-text .sub { font-size: 10px; color: #7a8aaa; line-height: 1.2; }
-        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
-        .sidebar .nav-link { color: #7a8aaa !important; padding: 8px 12px; font-size: 13px; font-weight: 500; border-radius: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 8px; text-decoration: none; }
-        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
-        .sidebar .nav-link:hover { background: rgba(255,255,255,0.08); color: white !important; }
-        .sidebar .nav-link.active { background: #2D3A6B; color: white !important; }
-        .sidebar-footer { margin-top: auto; padding: 6px 12px; border-top: 1px solid #2a2a4a; display: flex; align-items: center; gap: 8px; }
-        .sidebar-footer .user-icon { color: #5a6a8a; font-size: 14px; }
-        .sidebar-footer .user-name { font-size: 13px; color: #5a6a8a; }
+        .sidebar {
+            position: fixed;
+            top: 0; bottom: 0; left: 0;
+            z-index: 100;
+            width: 250px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            padding: 18px 14px;
+            transition: width .25s ease;
+            overflow: hidden;
+        }
+        .sidebar.collapsed { width: 68px; }
 
-        /* ===== SIDEBAR TOGGLE ===== */
-        .sidebar-toggle { display: flex; align-items: center; justify-content: center; padding: 8px; border-top: 1px solid #2a2a4a; cursor: pointer; transition: all 0.2s; }
-        .sidebar-toggle:hover { background: rgba(255,255,255,0.05); }
-        .sidebar-toggle i { color: #7a8aaa; font-size: 14px; transition: transform 0.3s; }
-        .sidebar-toggle:hover i { color: white; }
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 2px 6px 18px;
+            border-bottom: 1px solid var(--sidebar-line);
+            margin-bottom: 18px;
+            white-space: nowrap;
+        }
+        .sidebar-brand .vw-icon {
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 0 3px rgba(255,255,255,.08), 0 4px 14px rgba(0,0,0,.4);
+        }
+        .sidebar-brand .vw-icon img { width: 100%; height: 100%; object-fit: contain; }
+        .sidebar-brand .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+        .sidebar-brand .brand-text .title {
+            font-family: 'VWHead', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+        .sidebar-brand .brand-text .sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 2px; }
 
-        /* ===== SIDEBAR COLLAPSED ===== */
-        .sidebar.collapsed { width: 60px; }
-        .sidebar.collapsed .brand-text { display: none; }
-        .sidebar.collapsed .nav-link span { display: none; }
-        .sidebar.collapsed .nav-link { justify-content: center; padding: 10px; gap: 0; }
-        .sidebar.collapsed .nav-link i { width: auto; font-size: 16px; }
-        .sidebar.collapsed .sidebar-brand { justify-content: center; padding: 6px 8px 8px; }
-        .sidebar.collapsed .sidebar-footer { justify-content: center; padding: 6px 8px; }
-        .sidebar.collapsed .user-name { display: none; }
-        .sidebar.collapsed .sidebar-toggle i { transform: rotate(180deg); }
-        .sidebar.collapsed ~ main { margin-left: 60px; width: calc(100% - 60px); }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 6px; }
+        .sidebar .nav-link {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            padding: 12px 14px;
+            border-radius: 11px;
+            font-size: 13.5px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all .18s ease;
+        }
+        .sidebar .nav-link .nav-ico {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .sidebar .nav-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+        .sidebar .nav-link.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(0,77,152,.4);
+        }
+        .sidebar .nav-link.active::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-left: 9px solid var(--primary);
+        }
+
+        .sidebar-art { margin-top: auto; opacity: .55; padding: 0 4px; }
+        .sidebar-art svg { width: 100%; height: auto; }
+
+        .sidebar-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 14px 6px 0;
+            border-top: 1px solid var(--sidebar-line);
+            white-space: nowrap;
+        }
+        .sidebar-footer .org { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .sidebar-footer .org .org-ico {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.08);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--sidebar-text);
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .sidebar-footer .org .org-name { font-size: 12px; color: var(--sidebar-text); }
+        .sidebar-footer .collapse-btn {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,.08);
+            color: var(--sidebar-text);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+            transition: all .2s ease;
+        }
+        .sidebar-footer .collapse-btn:hover { background: var(--primary); color: #fff; }
+        .sidebar-footer .collapse-btn i { transition: transform .25s ease; }
+
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .nav-label,
+        .sidebar.collapsed .org-name,
+        .sidebar.collapsed .sidebar-art { display: none; }
+        .sidebar.collapsed .sidebar-brand { justify-content: center; padding: 2px 0 18px; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding: 13px; }
+        .sidebar.collapsed .nav-link.active::after { right: -10px; }
+        .sidebar.collapsed .sidebar-footer { justify-content: center; }
+        .sidebar.collapsed .collapse-btn i { transform: rotate(180deg); }
 
         /* ===== MAIN ===== */
-        main { margin-left: 210px; padding: 8px 12px; min-height: 100vh; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: #f0f2f6; width: calc(100% - 210px); }
+        main {
+            margin-left: 250px;
+            padding: 22px 26px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: margin-left .25s ease;
+        }
+        .sidebar.collapsed ~ main { margin-left: 68px; }
 
         /* ===== HEADER ===== */
-        .main-header { display: flex; align-items: center; justify-content: space-between; padding: 2px 0 4px; border-bottom: 1px solid #dce1e8; flex-shrink: 0; margin-bottom: 4px; }
-        .main-header h1 { font-size: 17px; font-weight: 600; margin: 0; color: #1a2332; }
-        .main-header h1 i { color: #2F80ED; margin-right: 6px; font-size: 14px; }
-        .main-header .badge-version { font-size: 10px; background: #2F80ED; color: white; padding: 2px 10px; border-radius: 10px; }
+        .main-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .main-header .title-group { display: flex; align-items: center; gap: 14px; }
+        .main-header .title-ico {
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .main-header h1 {
+            font-family: 'VWHead', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text);
+            letter-spacing: .5px;
+        }
+        .main-header .subtitle { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+        .main-header .header-actions { display: flex; align-items: center; gap: 10px; }
+        .main-header .icon-btn {
+            position: relative;
+            width: 40px; height: 40px;
+            border-radius: 11px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            box-shadow: var(--shadow-soft);
+            transition: all .18s ease;
+        }
+        .main-header .icon-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); }
+        .main-header .icon-btn .dot {
+            position: absolute;
+            top: 8px; right: 9px;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--red);
+            border: 2px solid var(--surface);
+        }
+        .main-header .avatar {
+            width: 40px; height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #004D98, #00A2E8);
+            color: #fff;
+            font-family: 'VWHead', sans-serif;
+            font-size: 15px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,77,152,.35);
+        }
 
         /* ===== TOOLBAR ===== */
-        .toolbar { display: flex; gap: 4px; padding: 3px 0; flex-shrink: 0; flex-wrap: wrap; align-items: center; }
-        .toolbar .btn { padding: 5px 12px; font-size: 12px; border-radius: 6px; font-weight: 500; }
-        .toolbar .btn i { font-size: 13px; margin-right: 4px; }
+        .toolbar { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+        .btn-tool {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-family: 'VWHead', sans-serif;
+            font-size: 12px;
+            letter-spacing: .5px;
+            font-weight: 700;
+            cursor: pointer;
+            color: #fff;
+            box-shadow: var(--shadow);
+            transition: all .18s ease;
+        }
+        .btn-tool i { font-size: 14px; }
+        .btn-tool:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(16,32,62,.18); }
+        .btn-tool:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-tool.green { background: var(--green); }
+        .btn-tool.blue { background: var(--primary); }
+        .btn-tool.amber { background: var(--amber); }
+        .btn-tool.red { background: var(--red); }
 
         /* ===== UPLOAD ZONES ===== */
-        .upload-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-shrink: 0; margin-bottom: 6px; }
-        .upload-zone { background: white; border-radius: 10px; padding: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border: 2px dashed #dce1e8; cursor: pointer; transition: all 0.2s; text-align: center; }
-        .upload-zone:hover { border-color: #2F80ED; background: #f8faff; }
-        .upload-zone.loaded { border-color: #27AE60; border-style: solid; background: #f0faf4; }
-        .upload-zone .icon { font-size: 22px; color: #aab8cc; margin-bottom: 4px; }
-        .upload-zone.loaded .icon { color: #27AE60; }
-        .upload-zone .label { font-size: 12px; font-weight: 600; color: #3a4a6a; }
-        .upload-zone .sublabel { font-size: 10px; color: #8a9aaa; }
-        .upload-zone .filename { font-size: 11px; color: #27AE60; font-weight: 600; margin-top: 4px; display: none; }
+        .upload-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex-shrink: 0; }
+        .upload-zone {
+            background: var(--surface);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            cursor: pointer;
+            transition: all .2s ease;
+            text-align: center;
+            box-shadow: var(--shadow-soft);
+        }
+        .upload-zone:hover { border-color: var(--primary); background: var(--primary-soft); transform: translateY(-1px); }
+        .upload-zone.loaded { border-color: var(--green); border-style: solid; background: var(--green-soft); }
+        .upload-zone .icon { font-size: 26px; color: var(--text-muted); margin-bottom: 6px; }
+        .upload-zone.loaded .icon { color: var(--green); }
+        .upload-zone .label { font-size: 13px; font-weight: 700; color: var(--text); }
+        .upload-zone .sublabel { font-size: 11px; color: var(--text-muted); }
+        .upload-zone .filename { font-size: 11px; color: var(--green); font-weight: 600; margin-top: 6px; display: none; }
         .upload-zone.loaded .filename { display: block; }
 
         /* ===== SUMMARY CARDS ===== */
-        .summary-cards { display: flex; gap: 4px; flex-shrink: 0; margin-bottom: 6px; }
-        .summary-card { flex: 1; background: white; border-radius: 10px; padding: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); text-align: center; }
-        .summary-card .sc-label { font-size: 9px; color: #6a7a8a; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; }
-        .summary-card .sc-value { font-size: 20px; font-weight: 700; margin-top: 2px; }
-        .summary-card .sc-value.green { color: #27AE60; }
-        .summary-card .sc-value.red { color: #E74C3C; }
-        .summary-card .sc-value.blue { color: #2F80ED; }
-        .summary-card .sc-value.gray { color: #5a6a7a; }
+        .summary-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; flex-shrink: 0; }
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            box-shadow: var(--shadow-soft);
+        }
+        .summary-card .sc-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+        .summary-card .sc-value { font-family: var(--mono); font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .summary-card .sc-value.green { color: var(--green); }
+        .summary-card .sc-value.red { color: var(--red); }
+        .summary-card .sc-value.blue { color: var(--primary); }
+        .summary-card .sc-value.gray { color: var(--text-muted); }
 
-        /* ===== COMPARISON TABLE ===== */
-        .card-section { background: white; border-radius: 10px; padding: 6px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 4px; }
-        .card-section .card-title { font-size: 12px; font-weight: 700; color: #1a2332; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
-        .card-section .card-title i { color: #2F80ED; font-size: 14px; }
+        /* ===== CARDS ===== */
+        .card-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            flex-shrink: 0;
+        }
+        .card-section .card-title {
+            font-family: 'VWHead', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            color: var(--text);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .card-section .card-title .lt { display: flex; align-items: center; gap: 8px; }
+        .card-section .card-title i { color: var(--primary); font-size: 15px; }
+        .card-section .card-title .hint { font-size: 10px; font-weight: 400; color: var(--text-muted); }
 
-        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #e8ecf0; }
-        .table-wrapper table { font-size: 11px; margin: 0; width: 100%; border-collapse: collapse; min-width: 700px; }
-        .table-wrapper thead th { background: #2D3A6B; color: white; font-weight: 600; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 6px; border-bottom: 2px solid #1A1A2E; white-space: nowrap; position: sticky; top: 0; z-index: 5; }
-        .table-wrapper thead th.col-pdf { background: #1a6bc4; }
-        .table-wrapper thead th.col-ocr { background: #27AE60; }
-        .table-wrapper thead th.col-estado { background: #1A1A2E; text-align: center; }
-        .table-wrapper tbody td { padding: 3px 6px; vertical-align: middle; border-bottom: 1px solid #f0f2f5; font-size: 11px; white-space: nowrap; }
-        .table-wrapper tbody tr { transition: background 0.1s; }
-        .table-wrapper tbody tr:hover { background: #f5f8fc; }
-        .table-wrapper tbody tr.row-ok { background: #f0faf4; }
-        .table-wrapper tbody tr.row-error { background: #fef2f2; }
+        /* ===== TABLAS ===== */
+        .table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+        .table-wrapper table { font-size: 12px; margin: 0; width: 100%; border-collapse: collapse; min-width: 700px; }
+        .table-wrapper thead th {
+            background: #0B1B33;
+            color: #B9C9E2;
+            font-family: 'VWHead', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 10px 12px;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .table-wrapper thead th.col-pdf { background: #004D98; }
+        .table-wrapper thead th.col-ocr { background: #1F9D55; }
+        .table-wrapper thead th.col-estado { background: #0B1B33; text-align: center; }
+        .table-wrapper tbody td {
+            padding: 8px 12px;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .table-wrapper tbody tr { transition: background .12s ease; }
+        .table-wrapper tbody tr:hover { background: var(--surface-2); }
+        .table-wrapper tbody tr.row-ok { background: var(--green-soft); }
+        .table-wrapper tbody tr.row-error { background: var(--red-soft); }
 
-        .cell-code { font-family: 'Consolas', monospace; font-size: 12px; font-weight: 500; }
-        .cell-price { text-align: right; font-weight: 600; }
+        .cell-code { font-family: var(--mono); font-size: 12px; font-weight: 600; cursor: pointer; }
+        .cell-code:hover { text-decoration: underline dotted; }
+        .cell-price { text-align: right; font-weight: 700; }
         .cell-center { text-align: center; }
 
-        .estado-ok { display: inline-flex; align-items: center; gap: 4px; background: #e8f5e9; color: #27AE60; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
-        .estado-err { display: inline-flex; align-items: center; gap: 4px; background: #fde8e8; color: #E74C3C; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
-        .estado-warn { display: inline-flex; align-items: center; gap: 4px; background: #fff3cd; color: #856404; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
-        .estado-extra { display: inline-flex; align-items: center; gap: 4px; background: #f3e8fd; color: #7B2D8E; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .estado-ok { display: inline-flex; align-items: center; gap: 4px; background: var(--green-soft); color: var(--green); padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .estado-err { display: inline-flex; align-items: center; gap: 4px; background: var(--red-soft); color: var(--red); padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .estado-warn { display: inline-flex; align-items: center; gap: 4px; background: var(--amber-soft); color: var(--amber); padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+        .estado-extra { display: inline-flex; align-items: center; gap: 4px; background: var(--purple-soft); color: var(--purple); padding: 3px 8px; border-radius: 8px; font-size: 10px; font-weight: 700; }
 
-        /* ===== FIELD COMPARISON ROWS ===== */
-        .field-row { display: flex; align-items: center; padding: 3px 0; border-bottom: 1px solid #f0f2f5; }
+        /* ===== FIELD COMPARISON ===== */
+        .field-row { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 12px; }
         .field-row:last-child { border-bottom: none; }
-        .field-label { width: 80px; font-weight: 700; color: #3a4a6a; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; flex-shrink: 0; }
-        .field-values { display: flex; gap: 6px; flex: 1; align-items: center; }
-        .field-val { flex: 1; padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 500; }
-        .field-val.pdf { background: #e8f0fe; color: #1a6bc4; border: 1px solid #c4d9f5; }
-        .field-val.ocr { background: #e8f5e9; color: #1b7a43; border: 1px solid #b2dfbc; }
-        .field-estado { width: 90px; text-align: center; flex-shrink: 0; }
+        .field-label {
+            width: 100px;
+            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+        .field-values { display: flex; gap: 10px; flex: 1; align-items: center; min-width: 0; }
+        .field-val { flex: 1; padding: 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .field-val.pdf { background: var(--primary-soft); color: var(--primary); }
+        .field-val.ocr { background: var(--green-soft); color: var(--green); }
+        .field-estado { width: 130px; text-align: center; flex-shrink: 0; }
 
-        /* ===== OCR EDITABLE ===== */
-        .ocr-edit-row { display: flex; gap: 3px; margin-bottom: 3px; flex-wrap: wrap; align-items: center; }
-        .ocr-edit-row .btn { padding: 3px 8px; font-size: 10px; }
+        /* ===== OCR EDIT ROW ===== */
+        .ocr-edit-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+        .btn-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            padding: 7px 12px;
+            border-radius: 9px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .btn-mini:hover { transform: translateY(-1px); }
+        .btn-mini.blue { color: var(--primary); }
+        .btn-mini.blue:hover { border-color: var(--primary); background: var(--primary-soft); }
+        .btn-mini.red { color: var(--red); }
+        .btn-mini.red:hover { border-color: var(--red); background: var(--red-soft); }
+        .btn-mini.green { color: var(--green); }
+        .btn-mini.green:hover { border-color: var(--green); background: var(--green-soft); }
 
         /* ===== SUMMARY TEXT ===== */
-        .summary-text { background: #f8f9fb; border-radius: 8px; padding: 4px 8px; font-family: 'Consolas', monospace; font-size: 11px; color: #1a2332; white-space: pre-wrap; max-height: 100px; overflow-y: auto; border: 1px solid #e8ecf0; }
-        .summary-text.all-ok { color: #27AE60; font-weight: 600; }
-        .summary-text.has-errors { color: #E74C3C; }
+        .summary-text {
+            background: var(--surface-2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text);
+            white-space: pre-wrap;
+            max-height: 160px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+        .summary-text.all-ok { color: var(--green); font-weight: 600; }
+        .summary-text.has-errors { color: var(--red); }
 
         /* ===== TOOLTIP ===== */
-        .copy-tooltip { position: fixed; background: rgba(0,0,0,0.85); color: white; padding: 6px 16px; border-radius: 6px; font-size: 13px; pointer-events: none; z-index: 9999; animation: fadeInUp 0.2s ease; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .copy-tooltip {
+            position: fixed;
+            top: 18px; right: 20px;
+            background: #16233B;
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0,0,0,.25);
+            pointer-events: none;
+            z-index: 9999;
+            animation: slideIn .25s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         /* ===== RESPONSIVE ===== */
+        @media (max-width: 1400px) {
+            .summary-cards { grid-template-columns: repeat(3, 1fr); }
+        }
         @media (max-width: 768px) {
-            .sidebar { width: 50px; }
-            .sidebar .brand-text, .sidebar .nav-link span, .sidebar-footer .user-name { display: none; }
-            .sidebar-brand { justify-content: center; padding: 8px; }
-            .sidebar .nav-link { justify-content: center; padding: 8px; }
+            .sidebar { width: 68px; }
+            .sidebar .brand-text, .sidebar .nav-label, .sidebar .org-name, .sidebar .sidebar-art { display: none; }
+            .sidebar-brand { justify-content: center; }
+            .sidebar .nav-link { justify-content: center; padding: 13px; }
             .sidebar-footer { justify-content: center; }
-            main { margin-left: 50px; padding: 8px; }
+            main { margin-left: 68px; padding: 14px; }
             .upload-zones { grid-template-columns: 1fr; }
-            .summary-cards { flex-wrap: wrap; }
+            .summary-cards { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid p-0 h-100">
-        <div class="row g-0 h-100">
-            <nav class="sidebar">
-                <div class="sidebar-brand">
-                    <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
-                    <div class="brand-text">
-                        <span class="title">VERIFICADOR</span>
-                        <span class="sub">v3.0</span>
-                    </div>
-                </div>
-                <div class="sidebar-nav">
-                    <a class="nav-link" href="/"><i class="fas fa-file-alt"></i><span>Nuevo Remito</span></a>
-                    <a class="nav-link active" href="/verificar"><i class="fas fa-check-circle"></i><span>Verificar</span></a>
-                </div>
-                <div class="sidebar-footer">
-                    <i class="fas fa-user user-icon"></i>
-                    <span class="user-name">Volkswagen Org Sur</span>
-                </div>
-                <div class="sidebar-toggle" onclick="toggleSidebar()">
-                    <i class="fas fa-chevron-left"></i>
-                </div>
-            </nav>
-
-            <main>
-                <div class="main-header">
-                    <h1><i class="fas fa-check-circle"></i>Verificar Remito</h1>
-                    <span class="badge-version">v3.0</span>
-                </div>
-
-                <div class="toolbar">
-                    <button class="btn btn-success" onclick="ejecutarVerificacion()" id="btnVerificar" disabled>
-                        <i class="fas fa-play"></i>VERIFICAR
-                    </button>
-                    <button class="btn btn-primary" onclick="copiarResultado()">
-                        <i class="fas fa-copy"></i>Copiar resultado
-                    </button>
-                    <button class="btn btn-warning" onclick="guardarVerificacion()" id="btnGuardar" disabled>
-                        <i class="fas fa-save"></i>Guardar
-                    </button>
-                    <button class="btn btn-danger" onclick="limpiarTodo()">
-                        <i class="fas fa-eraser"></i>Limpiar
-                    </button>
-                </div>
-
-                <div class="upload-zones">
-                    <div class="upload-zone" id="zonePdf" onclick="document.getElementById('filePdf').click()">
-                        <div class="icon"><i class="fas fa-file-pdf"></i></div>
-                        <div class="label">PDF Self (remito original)</div>
-                        <div class="sublabel">Click para seleccionar</div>
-                        <div class="filename" id="pdfFilename"></div>
-                        <input type="file" id="filePdf" accept=".pdf" style="display:none" onchange="cargarPdf(this)">
-                    </div>
-                    <div class="upload-zone" id="zoneOcr" onclick="document.getElementById('fileOcr').click()">
-                        <div class="icon"><i class="fas fa-camera"></i></div>
-                        <div class="label">Captura ADTR (screenshot)</div>
-                        <div class="sublabel">Click para seleccionar</div>
-                        <div class="filename" id="ocrFilename"></div>
-                        <input type="file" id="fileOcr" accept="image/*" style="display:none" onchange="cargarImagen(this)">
-                    </div>
-                </div>
-
-                <!-- SUMMARY CARDS -->
-                <div class="summary-cards">
-                    <div class="summary-card">
-                        <div class="sc-label">Coincidencia</div>
-                        <div class="sc-value blue" id="scCoincidencia">--</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="sc-label">Errores</div>
-                        <div class="sc-value gray" id="scErrores">--</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="sc-label">Tiempo</div>
-                        <div class="sc-value gray" id="scTiempo">--</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="sc-label">Rep. PDF</div>
-                        <div class="sc-value gray" id="scRepPdf">0</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="sc-label">Rep. ADTR</div>
-                        <div class="sc-value gray" id="scRepOcr">0</div>
-                    </div>
-                </div>
-
-                <!-- FIELD COMPARISON -->
-                <div class="card-section" id="fieldSection" style="display:none;">
-                    <div class="card-title"><i class="fas fa-columns"></i>Comparación de campos</div>
-                    <div id="fieldComparison"></div>
-                </div>
-
-                <!-- OCR EDITABLE -->
-                <div class="card-section" id="ocrSection" style="display:none;">
-                    <div class="card-title"><i class="fas fa-edit"></i>Repuestos detectados (OCR) - editable</div>
-                    <div class="ocr-edit-row">
-                        <button class="btn btn-primary" onclick="editarRepOcr()"><i class="fas fa-pen"></i> Editar</button>
-                        <button class="btn btn-danger" onclick="eliminarRepOcr()"><i class="fas fa-trash"></i> Eliminar</button>
-                        <button class="btn btn-success" onclick="agregarRepOcr()"><i class="fas fa-plus"></i> Agregar</button>
-                    </div>
-                    <div class="table-wrapper" style="max-height:140px; overflow-y:auto;">
-                        <table>
-                            <thead><tr>
-                                <th style="width:5%;text-align:center;">#</th>
-                                <th>Código detectado</th>
-                                <th style="width:10%;text-align:center;">Cant.</th>
-                                <th style="width:14%;text-align:right;">Precio</th>
-                                <th style="width:8%;text-align:center;">Acc</th>
-                            </tr></thead>
-                            <tbody id="ocrBody">
-                                <tr><td colspan="5" class="text-center text-secondary" style="padding:12px;">Cargá una captura ADTR</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- UNIFIED COMPARISON TABLE -->
-                <div class="card-section" id="tablaComparacion" style="display:none;">
-                    <div class="card-title"><i class="fas fa-table"></i>Tabla comparativa - PDF Self vs ADTR</div>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead><tr>
-                                <th style="width:4%;text-align:center;">#</th>
-                                <th class="col-pdf">Código PDF</th>
-                                <th class="col-ocr">Código ADTR</th>
-                                <th>Descripción</th>
-                                <th style="width:6%;text-align:center;">Cant</th>
-                                <th class="col-pdf" style="width:11%;text-align:right;">s/IVA PDF</th>
-                                <th class="col-ocr" style="width:11%;text-align:right;">Precio ADTR</th>
-                                <th class="col-estado" style="width:10%;">Estado</th>
-                            </tr></thead>
-                            <tbody id="comparacionBody">
-                                <tr><td colspan="8" class="text-center text-secondary" style="padding:16px;">Esperando verificación...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- SUMMARY TEXT -->
-                <div class="card-section" id="summarySection" style="display:none;">
-                    <div class="card-title"><i class="fas fa-clipboard-list"></i>Resumen</div>
-                    <div class="summary-text" id="summaryText">Esperando verificación...</div>
-                </div>
-            </main>
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
+            <div class="brand-text">
+                <span class="title">VERIFICADOR</span>
+                <span class="sub">v3.0</span>
+            </div>
         </div>
-    </div>
+
+        <nav class="sidebar-nav">
+            <a class="nav-link" href="/">
+                <span class="nav-ico"><i class="fas fa-file-alt"></i></span>
+                <span class="nav-label">Nuevo Remito</span>
+            </a>
+            <a class="nav-link active" href="/verificar">
+                <span class="nav-ico"><i class="fas fa-shield-alt"></i></span>
+                <span class="nav-label">Verificar</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-art">
+            <svg viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 70 L70 70 L85 44 L130 44 L152 70 L210 70" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M90 44 L100 28 L150 28 L160 44" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="62" cy="70" r="7" stroke="#2E4A7A" stroke-width="3"/>
+                <circle cx="200" cy="70" r="7" stroke="#2E4A7A" stroke-width="3"/>
+                <circle cx="62" cy="70" r="2.5" fill="#2E4A7A"/>
+                <circle cx="200" cy="70" r="2.5" fill="#2E4A7A"/>
+                <path d="M120 28 L150 28" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round"/>
+                <path d="M128 36 L142 36" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="org">
+                <span class="org-ico"><i class="fas fa-user"></i></span>
+                <span class="org-name">Volkswagen Org Sur</span>
+            </div>
+            <button class="collapse-btn" onclick="toggleSidebar()" title="Contraer barra">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+    </aside>
+
+    <main>
+        <!-- HEADER -->
+        <header class="main-header">
+            <div class="title-group">
+                <div class="title-ico"><i class="fas fa-shield-halved"></i></div>
+                <div>
+                    <h1>Verificar Remito</h1>
+                    <p class="subtitle">Documento · Compará el PDF original contra la captura ADTR</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" title="Modo oscuro / claro">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="icon-btn" title="Notificaciones">
+                    <i class="fas fa-bell"></i><span class="dot"></span>
+                </button>
+                <div class="avatar" title="Usuario">RA</div>
+            </div>
+        </header>
+
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+            <button class="btn-tool green" onclick="ejecutarVerificacion()" id="btnVerificar" disabled>
+                <i class="fas fa-play"></i>VERIFICAR
+            </button>
+            <button class="btn-tool blue" onclick="copiarResultado()">
+                <i class="fas fa-copy"></i>Copiar resultado
+            </button>
+            <button class="btn-tool amber" onclick="guardarVerificacion()" id="btnGuardar" disabled>
+                <i class="fas fa-save"></i>Guardar
+            </button>
+            <button class="btn-tool red" onclick="limpiarTodo()">
+                <i class="fas fa-eraser"></i>Limpiar
+            </button>
+        </div>
+
+        <!-- UPLOAD ZONES -->
+        <div class="upload-zones">
+            <div class="upload-zone" id="zonePdf" onclick="document.getElementById('filePdf').click()">
+                <div class="icon"><i class="fas fa-file-pdf"></i></div>
+                <div class="label">PDF Self (remito original)</div>
+                <div class="sublabel">Click para seleccionar</div>
+                <div class="filename" id="pdfFilename"></div>
+                <input type="file" id="filePdf" accept=".pdf" style="display:none" onchange="cargarPdf(this)">
+            </div>
+            <div class="upload-zone" id="zoneOcr" onclick="document.getElementById('fileOcr').click()">
+                <div class="icon"><i class="fas fa-camera"></i></div>
+                <div class="label">Captura ADTR (screenshot)</div>
+                <div class="sublabel">Click para seleccionar</div>
+                <div class="filename" id="ocrFilename"></div>
+                <input type="file" id="fileOcr" accept="image/*" style="display:none" onchange="cargarImagen(this)">
+            </div>
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="sc-label">Coincidencia</div>
+                <div class="sc-value blue" id="scCoincidencia">--</div>
+            </div>
+            <div class="summary-card">
+                <div class="sc-label">Errores</div>
+                <div class="sc-value gray" id="scErrores">--</div>
+            </div>
+            <div class="summary-card">
+                <div class="sc-label">Tiempo</div>
+                <div class="sc-value gray" id="scTiempo">--</div>
+            </div>
+            <div class="summary-card">
+                <div class="sc-label">Rep. PDF</div>
+                <div class="sc-value gray" id="scRepPdf">0</div>
+            </div>
+            <div class="summary-card">
+                <div class="sc-label">Rep. ADTR</div>
+                <div class="sc-value gray" id="scRepOcr">0</div>
+            </div>
+        </div>
+
+        <!-- FIELD COMPARISON -->
+        <div class="card-section" id="fieldSection" style="display:none;">
+            <div class="card-title"><span class="lt"><i class="fas fa-columns"></i>Comparación de campos</span></div>
+            <div id="fieldComparison"></div>
+        </div>
+
+        <!-- OCR EDITABLE -->
+        <div class="card-section" id="ocrSection" style="display:none;">
+            <div class="card-title">
+                <span class="lt"><i class="fas fa-edit"></i>Repuestos detectados (ADTR) - editable</span>
+                <span class="hint"><i class="fas fa-mouse-pointer"></i> Doble click sobre un código para editarlo</span>
+            </div>
+            <div class="ocr-edit-row">
+                <button class="btn-mini blue" onclick="editarRepOcr()"><i class="fas fa-pen"></i> Editar</button>
+                <button class="btn-mini red" onclick="eliminarRepOcr()"><i class="fas fa-trash"></i> Eliminar</button>
+                <button class="btn-mini green" onclick="agregarRepOcr()"><i class="fas fa-plus"></i> Agregar</button>
+            </div>
+            <div class="table-wrapper" style="max-height:180px; overflow-y:auto;">
+                <table>
+                    <thead><tr>
+                        <th style="width:5%;text-align:center;">#</th>
+                        <th>Código detectado</th>
+                        <th style="width:10%;text-align:center;">Cant.</th>
+                        <th style="width:14%;text-align:right;">Precio</th>
+                        <th style="width:8%;text-align:center;">Acc</th>
+                    </tr></thead>
+                    <tbody id="ocrBody">
+                        <tr><td colspan="5" class="cell-center" style="padding:14px;color:var(--text-muted);">Cargá una captura ADTR</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- UNIFIED COMPARISON TABLE -->
+        <div class="card-section" id="tablaComparacion" style="display:none;">
+            <div class="card-title">
+                <span class="lt"><i class="fas fa-table"></i>Tabla comparativa - PDF Self vs ADTR</span>
+                <span class="hint"><i class="fas fa-mouse-pointer"></i> Doble click sobre un código para editarlo</span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr>
+                        <th style="width:4%;text-align:center;">#</th>
+                        <th class="col-pdf">Código PDF</th>
+                        <th class="col-ocr">Código ADTR</th>
+                        <th>Descripción</th>
+                        <th style="width:6%;text-align:center;">Cant</th>
+                        <th class="col-pdf" style="width:11%;text-align:right;">s/IVA PDF</th>
+                        <th class="col-ocr" style="width:11%;text-align:right;">Precio ADTR</th>
+                        <th class="col-estado" style="width:10%;">Estado</th>
+                    </tr></thead>
+                    <tbody id="comparacionBody">
+                        <tr><td colspan="8" class="cell-center" style="padding:18px;color:var(--text-muted);">Esperando verificación...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SUMMARY TEXT -->
+        <div class="card-section" id="summarySection" style="display:none;">
+            <div class="card-title"><span class="lt"><i class="fas fa-clipboard-list"></i>Resumen</span></div>
+            <div class="summary-text" id="summaryText">Esperando verificación...</div>
+        </div>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        /* ===== SIDEBAR ===== */
         function toggleSidebar() {
             const sb = document.querySelector('.sidebar');
             sb.classList.toggle('collapsed');
@@ -302,6 +715,23 @@
         if (localStorage.getItem('sidebarCollapsed') === 'true') {
             document.querySelector('.sidebar').classList.add('collapsed');
         }
+
+        /* ===== TEMA OSCURO / CLARO ===== */
+        function toggleTheme() {
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+            localStorage.setItem('theme', dark ? 'light' : 'dark');
+            updateThemeIcon();
+        }
+        function updateThemeIcon() {
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        updateThemeIcon();
 
         let datosPdf = null;
         let datosOcr = null;
@@ -361,45 +791,86 @@
             tbody.innerHTML = '';
             document.getElementById('scRepOcr').textContent = repuestosOcr.length;
             if (repuestosOcr.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-secondary" style="padding:12px;">Sin repuestos detectados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="cell-center" style="padding:14px;color:var(--text-muted);">Sin repuestos detectados</td></tr>';
                 return;
             }
             repuestosOcr.forEach((rep, i) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="cell-center" style="color:#aab8cc;">${i+1}</td>
-                    <td class="cell-code">${rep.codigo}</td>
+                    <td class="cell-code" data-ocr-idx="${i}" title="Doble click para editar">${rep.codigo}</td>
                     <td class="cell-center">${rep.cantidad}</td>
                     <td class="cell-price">$${rep.precio}</td>
                     <td class="cell-center">
-                        <button class="btn btn-sm btn-outline-primary" style="padding:2px 8px;font-size:11px;" onclick="editarRepOcrAt(${i})" title="Editar"><i class="fas fa-pen"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" style="padding:2px 8px;font-size:11px;" onclick="eliminarRepOcrAt(${i})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        <button class="btn-mini blue" style="padding:3px 8px;font-size:10px;" onclick="editarRepOcrAt(${i})" title="Editar"><i class="fas fa-pen"></i></button>
+                        <button class="btn-mini red" style="padding:3px 8px;font-size:10px;" onclick="eliminarRepOcrAt(${i})" title="Eliminar"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
+                tr.querySelector('.cell-code').addEventListener('dblclick', function(e) {
+                    e.stopPropagation();
+                    editarRepOcrAt(parseInt(this.dataset.ocrIdx));
+                });
                 tbody.appendChild(tr);
             });
         }
 
         function editarRepOcrAt(idx) {
-            Swal.fire({ title: 'Editar código', input: 'text', inputLabel: 'Código del repuesto', inputValue: repuestosOcr[idx].codigo, showCancelButton: true, confirmButtonText: 'Aceptar', cancelButtonText: 'Cancelar' })
-            .then(result => { if (result.isConfirmed && result.value.trim()) { repuestosOcr[idx].codigo = result.value.trim().toUpperCase(); renderOcrTable(); } });
+            if (idx < 0 || idx >= repuestosOcr.length) return;
+            Swal.fire({
+                title: 'Editar código',
+                input: 'text',
+                inputLabel: 'Código del repuesto',
+                inputValue: repuestosOcr[idx].codigo,
+                width: 460,
+                showCancelButton: true,
+                confirmButtonText: 'Aceptar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (v) => { if (!v || !v.trim()) return 'El código no puede estar vacío'; }
+            })
+            .then(result => {
+                if (result.isConfirmed && result.value.trim()) {
+                    repuestosOcr[idx].codigo = result.value.trim().toUpperCase();
+                    renderOcrTable();
+                    reejecutarVerificacion();
+                }
+            });
         }
         function editarRepOcr() {
             if (ocrIndexSeleccionado < 0 || ocrIndexSeleccionado >= repuestosOcr.length) { Swal.fire('Info', 'Seleccioná un repuesto', 'info'); return; }
             editarRepOcrAt(ocrIndexSeleccionado);
         }
-        function eliminarRepOcrAt(idx) { repuestosOcr.splice(idx, 1); if (ocrIndexSeleccionado >= repuestosOcr.length) ocrIndexSeleccionado = repuestosOcr.length - 1; renderOcrTable(); }
+        function eliminarRepOcrAt(idx) { repuestosOcr.splice(idx, 1); if (ocrIndexSeleccionado >= repuestosOcr.length) ocrIndexSeleccionado = repuestosOcr.length - 1; renderOcrTable(); reejecutarVerificacion(); }
         function eliminarRepOcr() {
             if (ocrIndexSeleccionado < 0 || ocrIndexSeleccionado >= repuestosOcr.length) { Swal.fire('Info', 'Seleccioná un repuesto', 'info'); return; }
             eliminarRepOcrAt(ocrIndexSeleccionado);
         }
         function agregarRepOcr() {
-            Swal.fire({ title: 'Agregar código', input: 'text', inputLabel: 'Código del repuesto', inputValue: '', showCancelButton: true, confirmButtonText: 'Agregar', cancelButtonText: 'Cancelar' })
-            .then(result => { if (result.isConfirmed && result.value.trim()) { repuestosOcr.push({ codigo: result.value.trim().toUpperCase(), cantidad: '1.00', precio: '0' }); renderOcrTable(); } });
+            Swal.fire({
+                title: 'Agregar código',
+                input: 'text',
+                inputLabel: 'Código del repuesto',
+                inputValue: '',
+                width: 460,
+                showCancelButton: true,
+                confirmButtonText: 'Agregar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (v) => { if (!v || !v.trim()) return 'El código no puede estar vacío'; }
+            })
+            .then(result => {
+                if (result.isConfirmed && result.value.trim()) {
+                    repuestosOcr.push({ codigo: result.value.trim().toUpperCase(), cantidad: '1.00', precio: '0' });
+                    renderOcrTable();
+                    reejecutarVerificacion();
+                }
+            });
         }
 
         function actualizarBotones() {
             document.getElementById('btnVerificar').disabled = !(datosPdf && datosOcr);
+        }
+
+        function reejecutarVerificacion() {
+            if (datosPdf && datosOcr) ejecutarVerificacion();
         }
 
         function ejecutarVerificacion() {
@@ -479,7 +950,6 @@
             section.style.display = 'block';
             summary.style.display = 'block';
 
-            // Summary cards
             const coincidencia = resultado.coincidencia || 0;
             const erroresCount = (resultado.errores || []).length;
             const tiempo = resultado.tiempo || 0;
@@ -494,33 +964,27 @@
             document.getElementById('scRepPdf').textContent = (datosPdf?.repuestos || []).length;
             document.getElementById('scRepOcr').textContent = repuestosOcr.length;
 
-            // Build unified table
             const tbody = document.getElementById('comparacionBody');
             tbody.innerHTML = '';
 
+            const norm = c => (c || '').toUpperCase().replace(/[\s\-_.]/g, '');
             const pdfReps = {};
-            (datosPdf?.repuestos || []).forEach(r => {
-                const k = (r.codigo || '').toUpperCase().replace(/[\s\-_.]/g, '');
-                pdfReps[k] = r;
-            });
+            (datosPdf?.repuestos || []).forEach((r, i) => { pdfReps[norm(r.codigo)] = { rep: r, idx: i }; });
             const ocrReps = {};
-            repuestosOcr.forEach(r => {
-                const k = (r.codigo || '').toUpperCase().replace(/[\s\-_.]/g, '');
-                ocrReps[k] = r;
-            });
+            repuestosOcr.forEach((r, i) => { ocrReps[norm(r.codigo)] = { rep: r, idx: i }; });
 
             const allCodes = new Set([...Object.keys(pdfReps), ...Object.keys(ocrReps)]);
             let idx = 0;
 
             allCodes.forEach(codNorm => {
-                const repPdf = pdfReps[codNorm];
-                const repOcr = ocrReps[codNorm];
+                const pdfItem = pdfReps[codNorm];
+                const ocrItem = ocrReps[codNorm];
                 idx++;
 
-                let estado, estadoClass, rowClass;
-                if (repPdf && repOcr) {
-                    const precioPdf = parseFloat(repPdf.precio_sin_iva) || 0;
-                    const precioOcr = parseFloat(repOcr.precio) || 0;
+                let estado, rowClass;
+                if (pdfItem && ocrItem) {
+                    const precioPdf = parseFloat(pdfItem.rep.precio_sin_iva) || 0;
+                    const precioOcr = parseFloat(ocrItem.rep.precio) || 0;
                     const precioOcrSin = precioOcr > 100 ? precioOcr / 1.21 : precioOcr;
                     if (Math.abs(precioPdf - precioOcrSin) < 1 && precioPdf > 0 && precioOcrSin > 0) {
                         estado = '<span class="estado-ok"><i class="fas fa-check"></i> OK</span>';
@@ -532,7 +996,7 @@
                         estado = '<span class="estado-ok"><i class="fas fa-check"></i> OK</span>';
                         rowClass = 'row-ok';
                     }
-                } else if (repPdf && !repOcr) {
+                } else if (pdfItem && !ocrItem) {
                     estado = '<span class="estado-err"><i class="fas fa-times"></i> FALTA</span>';
                     rowClass = 'row-error';
                 } else {
@@ -540,25 +1004,40 @@
                     rowClass = 'row-error';
                 }
 
-                const precioPdf = repPdf ? (parseFloat(repPdf.precio_sin_iva) || 0) : 0;
-                const precioOcr = repOcr ? (parseFloat(repOcr.precio) || 0) : 0;
+                const precioPdf = pdfItem ? (parseFloat(pdfItem.rep.precio_sin_iva) || 0) : 0;
+                const precioOcr = ocrItem ? (parseFloat(ocrItem.rep.precio) || 0) : 0;
 
                 const tr = document.createElement('tr');
                 tr.className = rowClass;
                 tr.innerHTML = `
                     <td class="cell-center" style="color:#aab8cc;">${idx}</td>
-                    <td class="cell-code">${repPdf ? repPdf.codigo : '<span style="color:#ccc;">-</span>'}</td>
-                    <td class="cell-code">${repOcr ? repOcr.codigo : '<span style="color:#ccc;">-</span>'}</td>
-                    <td>${repPdf?.descripcion || ''}</td>
-                    <td class="cell-center">${repPdf?.cantidad || repOcr?.cantidad || '1'}</td>
-                    <td class="cell-price" style="color:#1a6bc4;">${repPdf ? '$' + precioPdf.toFixed(2) : '-'}</td>
-                    <td class="cell-price" style="color:#27AE60;">${repOcr ? '$' + precioOcr.toFixed(2) : '-'}</td>
+                    <td class="cell-code" data-pdf-idx="${pdfItem ? pdfItem.idx : ''}" title="Doble click para editar">${pdfItem ? pdfItem.rep.codigo : '<span style="color:#aab8cc;">-</span>'}</td>
+                    <td class="cell-code" data-ocr-idx="${ocrItem ? ocrItem.idx : ''}" title="Doble click para editar">${ocrItem ? ocrItem.rep.codigo : '<span style="color:#aab8cc;">-</span>'}</td>
+                    <td>${pdfItem?.rep.descripcion || ''}</td>
+                    <td class="cell-center">${pdfItem?.rep.cantidad || ocrItem?.rep.cantidad || '1'}</td>
+                    <td class="cell-price" style="color:var(--primary);">${pdfItem ? '$' + precioPdf.toFixed(2) : '-'}</td>
+                    <td class="cell-price" style="color:var(--green);">${ocrItem ? '$' + precioOcr.toFixed(2) : '-'}</td>
                     <td class="cell-center">${estado}</td>
                 `;
+
+                const pdfCell = tr.querySelector('.cell-code[data-pdf-idx]');
+                if (pdfCell && pdfCell.dataset.pdfIdx !== '') {
+                    pdfCell.addEventListener('dblclick', function(e) {
+                        e.stopPropagation();
+                        editarCodigoPdf(parseInt(this.dataset.pdfIdx));
+                    });
+                }
+                const ocrCell = tr.querySelector('.cell-code[data-ocr-idx]');
+                if (ocrCell && ocrCell.dataset.ocrIdx !== '') {
+                    ocrCell.addEventListener('dblclick', function(e) {
+                        e.stopPropagation();
+                        editarCodigoOcr(parseInt(this.dataset.ocrIdx));
+                    });
+                }
+
                 tbody.appendChild(tr);
             });
 
-            // Summary text
             const summaryEl = document.getElementById('summaryText');
             if (erroresCount === 0) {
                 summaryEl.textContent = `TODO OK - No se encontraron diferencias.\nPDF: ${(datosPdf?.repuestos||[]).length} repuestos | ADTR: ${repuestosOcr.length} repuestos`;
@@ -571,6 +1050,51 @@
                 summaryEl.textContent = `SE ENCONTRARON ${erroresCount} PROBLEMA(S):\n\n${lines.join('\n')}\n\n---\nPDF: ${(datosPdf?.repuestos||[]).length} repuestos | ADTR: ${repuestosOcr.length} repuestos`;
                 summaryEl.className = 'summary-text has-errors';
             }
+        }
+
+        /* ===== EDITAR CÓDIGOS EN LA TABLA COMPARATIVA (doble click) ===== */
+        function editarCodigoPdf(idx) {
+            const rep = datosPdf?.repuestos?.[idx];
+            if (!rep) return;
+            Swal.fire({
+                title: 'Editar código PDF',
+                input: 'text',
+                inputLabel: 'Código del repuesto',
+                inputValue: rep.codigo || '',
+                width: 460,
+                showCancelButton: true,
+                confirmButtonText: 'Aceptar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (v) => { if (!v || !v.trim()) return 'El código no puede estar vacío'; }
+            })
+            .then(result => {
+                if (result.isConfirmed && result.value.trim()) {
+                    rep.codigo = result.value.trim().toUpperCase();
+                    reejecutarVerificacion();
+                }
+            });
+        }
+
+        function editarCodigoOcr(idx) {
+            if (idx < 0 || idx >= repuestosOcr.length) return;
+            Swal.fire({
+                title: 'Editar código ADTR',
+                input: 'text',
+                inputLabel: 'Código del repuesto',
+                inputValue: repuestosOcr[idx].codigo || '',
+                width: 460,
+                showCancelButton: true,
+                confirmButtonText: 'Aceptar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (v) => { if (!v || !v.trim()) return 'El código no puede estar vacío'; }
+            })
+            .then(result => {
+                if (result.isConfirmed && result.value.trim()) {
+                    repuestosOcr[idx].codigo = result.value.trim().toUpperCase();
+                    renderOcrTable();
+                    reejecutarVerificacion();
+                }
+            });
         }
 
         function copiarResultado() {
@@ -617,8 +1141,8 @@
             document.getElementById('fieldSection').style.display = 'none';
             document.getElementById('tablaComparacion').style.display = 'none';
             document.getElementById('summarySection').style.display = 'none';
-            document.getElementById('ocrBody').innerHTML = '<tr><td colspan="5" class="text-center text-secondary" style="padding:12px;">Cargá una captura ADTR</td></tr>';
-            document.getElementById('comparacionBody').innerHTML = '<tr><td colspan="8" class="text-center text-secondary" style="padding:16px;">Esperando verificación...</td></tr>';
+            document.getElementById('ocrBody').innerHTML = '<tr><td colspan="5" class="cell-center" style="padding:14px;color:var(--text-muted);">Cargá una captura ADTR</td></tr>';
+            document.getElementById('comparacionBody').innerHTML = '<tr><td colspan="8" class="cell-center" style="padding:18px;color:var(--text-muted);">Esperando verificación...</td></tr>';
             document.getElementById('summaryText').textContent = 'Esperando verificación...';
             document.getElementById('summaryText').className = 'summary-text';
             document.getElementById('btnVerificar').disabled = true;
@@ -633,10 +1157,9 @@
         function mostrarNotificacion(mensaje) {
             const div = document.createElement('div');
             div.className = 'copy-tooltip';
-            div.textContent = mensaje;
-            div.style.top = '12px'; div.style.right = '18px';
+            div.textContent = '✅ ' + mensaje;
             document.body.appendChild(div);
-            setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity 0.4s'; setTimeout(() => div.remove(), 400); }, 1200);
+            setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity 0.4s'; setTimeout(() => div.remove(), 400); }, 1400);
         }
     </script>
 </body>

@@ -689,7 +689,7 @@
                 <span class="action-ico"><i class="fas fa-trash"></i></span>
                 <span class="action-text"><b>LIMPIAR</b><small>Borrar todo</small></span>
             </button>
-            <button class="action-card amarillo" onclick="copiarDatos()">
+            <button class="action-card amarillo" onclick="editarDatos()">
                 <span class="action-ico"><i class="fas fa-database"></i></span>
                 <span class="action-text"><b>DATOS</b><small>Ver / editar datos</small></span>
             </button>
@@ -699,7 +699,7 @@
             </button>
             <div class="action-card neutro">
                 <span class="action-ico"><i class="fas fa-arrows-left-right"></i></span>
-                <span class="action-text"><b>FLECHAS | CLICK COPIA</b><small>Navegación rápida</small></span>
+                <span class="action-text"><b>FLECHAS | CLICK COPIA</b><small>Flechas navegan · Doble click edita</small></span>
             </div>
         </section>
 
@@ -947,9 +947,14 @@
 
                     td.addEventListener('dblclick', function(e) {
                         e.stopPropagation();
-                        const tr = this.closest('tr');
-                        const texto = `${tr.dataset.codigo} | s/IVA: $${tr.dataset.precioSin}`;
-                        copiarTexto(texto, 'Repuesto copiado');
+                        const col = parseInt(this.dataset.col) || 1;
+                        if (col === 1) {
+                            editarCodigoEnFila(this);
+                        } else {
+                            const tr = this.closest('tr');
+                            const texto = `${tr.dataset.codigo} | s/IVA: $${tr.dataset.precioSin}`;
+                            copiarTexto(texto, 'Repuesto copiado');
+                        }
                     });
                 });
 
@@ -991,6 +996,42 @@
                 default: texto = tr.dataset.codigo; mensaje = 'Código: ' + texto;
             }
             if (texto) copiarTexto(texto, mensaje);
+        }
+
+        /* ===== EDITAR CÓDIGO DE PIEZA (doble click) ===== */
+        function editarCodigoEnFila(td) {
+            const tr = td.closest('tr');
+            if (!tr) return;
+            const index = parseInt(tr.dataset.index);
+            if (isNaN(index) || !repuestosData[index]) return;
+
+            Swal.fire({
+                title: 'Editar código de pieza',
+                input: 'text',
+                inputLabel: 'Código',
+                inputValue: repuestosData[index].codigo || '',
+                width: 460,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (v) => {
+                    if (!v || !v.trim()) return 'El código no puede estar vacío';
+                }
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const nuevo = formatearCodigo(result.value.trim().toUpperCase());
+                repuestosData[index].codigo = nuevo;
+                tr.dataset.codigo = nuevo;
+                const textoEl = tr.querySelector('.codigo-text');
+                if (textoEl) {
+                    textoEl.textContent = nuevo;
+                    textoEl.title = nuevo;
+                }
+                const copyBtn = tr.querySelector('.cell-copy[title="Copiar código"]');
+                if (copyBtn) copyBtn.dataset.copy = nuevo;
+                actualizarResumen(repuestosData);
+                mostrarNotificacion('Código actualizado: ' + nuevo);
+            });
         }
 
         /* ============ NAVEGACIÓN CON TECLADO ============ */
@@ -1113,9 +1154,49 @@
             filaSeleccionada = null;
         }
 
-        async function copiarDatos() {
-            const texto = `REMITO: ${document.getElementById('remitoDisplay').textContent}\nORDEN: ${document.getElementById('ordenDisplay').textContent}\nSINIESTRO: ${document.getElementById('siniestroDisplay').textContent}\nMODELO: ${document.getElementById('modeloDisplay').textContent}\nPATENTE: ${document.getElementById('patenteDisplay').textContent}`;
-            await copiarTexto(texto, 'Datos copiados');
+        function escapeAttr(s) {
+            return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function editarDatos() {
+            const get = id => document.getElementById(id).textContent === '-' ? '' : document.getElementById(id).textContent;
+            const html = `
+                <div style="text-align:left;display:grid;gap:6px;">
+                    <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Remito</label>
+                    <input id="editRemito" class="swal2-input" style="margin:0;" value="${escapeAttr(get('remitoDisplay'))}">
+                    <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Orden</label>
+                    <input id="editOrden" class="swal2-input" style="margin:0;" value="${escapeAttr(get('ordenDisplay'))}">
+                    <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Siniestro</label>
+                    <input id="editSiniestro" class="swal2-input" style="margin:0;" value="${escapeAttr(get('siniestroDisplay'))}">
+                    <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Modelo</label>
+                    <input id="editModelo" class="swal2-input" style="margin:0;" value="${escapeAttr(get('modeloDisplay'))}">
+                    <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Patente</label>
+                    <input id="editPatente" class="swal2-input" style="margin:0;" value="${escapeAttr(get('patenteDisplay'))}">
+                </div>`;
+            Swal.fire({
+                title: 'Editar datos del remito',
+                html: html,
+                width: 500,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => ({
+                    remito: document.getElementById('editRemito').value.trim(),
+                    orden: document.getElementById('editOrden').value.trim(),
+                    siniestro: document.getElementById('editSiniestro').value.trim(),
+                    modelo: document.getElementById('editModelo').value.trim(),
+                    patente: document.getElementById('editPatente').value.trim()
+                })
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const v = result.value;
+                const map = { remitoDisplay: 'remito', ordenDisplay: 'orden', siniestroDisplay: 'siniestro', modeloDisplay: 'modelo', patenteDisplay: 'patente' };
+                Object.keys(map).forEach(id => {
+                    document.getElementById(id).textContent = v[map[id]] || '-';
+                    if (datosPdf) datosPdf[map[id]] = v[map[id]];
+                });
+                mostrarNotificacion('Datos actualizados');
+            });
         }
 
         async function copiarRepuestosYPrecios() {
