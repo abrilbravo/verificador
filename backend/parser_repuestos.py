@@ -96,7 +96,8 @@ def _extraer_sufijo(resto):
 def extraer_codigos(texto, patron=PATRON_CODIGO_DIGITO):
     """Extrae todos los códigos de repuesto presentes en un texto.
     Si después del código hay un sufijo corto separado por espacio (GRU, 9B9,
-    041, 1NN, F, ...), lo agrega como ' -SUFIJO'. Devuelve lista ya formateada."""
+    041, 1NN, F, ...), lo agrega como '- -SUFIJO' (los espacios también cuentan).
+    Devuelve lista ya formateada."""
     resultado = []
     texto = _limpiar_texto_rep(texto).upper()
     for m in re.finditer(patron, texto):
@@ -104,7 +105,7 @@ def extraer_codigos(texto, patron=PATRON_CODIGO_DIGITO):
         resto = texto[m.end():]
         sufijo = _extraer_sufijo(resto)
         if sufijo:
-            resultado.append(f"{formatear_codigo(codigo)} -{sufijo}")
+            resultado.append(f"{formatear_codigo(codigo)}- -{sufijo}")
         else:
             resultado.append(formatear_codigo(codigo))
     return resultado
