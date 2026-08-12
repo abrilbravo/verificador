@@ -6,6 +6,20 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import PDF_CONFIG
+try:
+    from .parser_repuestos import (
+        parsear_repuestos,
+        extraer_codigos,
+        formatear_codigo,
+        PATRON_CODIGO_DIGITO,
+    )
+except ImportError:
+    from parser_repuestos import (
+        parsear_repuestos,
+        extraer_codigos,
+        formatear_codigo,
+        PATRON_CODIGO_DIGITO,
+    )
 
 class LectorOCR:
     def __init__(self):
@@ -119,94 +133,57 @@ class LectorOCR:
 
         return self.datos
 
-    def _parsear_precio(self, texto_precio):
-        t = texto_precio.strip()
-        t = t.replace("$", "").replace(" ", "")
-
-        if "," in t and "." in t:
-            if t.rindex(",") > t.rindex("."):
-                t = t.replace(".", "").replace(",", ".")
-            else:
-                t = t.replace(",", "")
-        elif "," in t:
-            t = t.replace(",", ".")
-        elif "." in t:
-            partes = t.split(".")
-            if len(partes) > 2:
-                t = "".join(partes[:-1]) + "." + partes[-1]
-
-        try:
-            return float(t)
-        except:
-            return 0.0
-
     def _extraer_repuestos(self):
         repuestos = []
-        patron_codigo = re.compile(
-            r'([0-9A-Z]{2,}[-][0-9A-Z]{1,}[-][0-9A-Z]{1,}(?:[-][0-9A-Z]{1,})*)'
-        )
-        patron_precio = re.compile(r'(\d[\d.,]*\d)')
-        patron_cantidad = re.compile(r'\b(\d+\.\d{2})\b')
+        vistos = set()
 
         siniestro = self.datos.get("siniestro", "").replace("-", "")
         orden = self.datos.get("orden", "").replace("-", "")
         patente = self.datos.get("patente", "").replace("-", "")
 
-        for linea in self.lineas:
-            codigos = patron_codigo.findall(linea.upper())
-            precios_raw = patron_precio.findall(linea)
-            cantidades = patron_cantidad.findall(linea)
+        def es_codigo_valido(clave):
+            if not clave:
+                return False
+            if clave == siniestro or clave == patente:
+                return False
+            if clave.startswith(orden) and len(clave) <= len(orden) + 3:
+                return False
+            if clave.isdigit() and len(clave) in (10, 11):
+                return False
+            return True
 
-            precios = []
-            for p in precios_raw:
-                val = self._parsear_precio(p)
-                if val > 100:
-                    precios.append(p)
-
-            if not codigos:
-                continue
-
-            for codigo in codigos:
-                sin_guiones = codigo.replace("-", "")
-
-                if len(sin_guiones) < 8:
-                    continue
-                if sin_guiones == siniestro:
-                    continue
-                if sin_guiones.startswith(orden) and len(sin_guiones) <= len(orden) + 3:
-                    continue
-                if sin_guiones == patente:
-                    continue
-                if len(sin_guiones) == 10 and sin_guiones.isdigit():
-                    continue
-                if len(sin_guiones) == 11 and sin_guiones.isdigit():
-                    continue
-                if re.match(r'^\d{2}[-]\d{8}[-]\d$', codigo):
-                    continue
-
-                cantidad = "1.00"
-                for c in cantidades:
-                    if c != "0.00":
-                        cantidad = c
-                        break
-
-                precio = "0"
-                if precios:
-                    precio = precios[-1]
-
+        def agregar(codigo, descripcion="", nombre="", precio="0"):
+            clave = re.sub(r'[^A-Z0-9]', '', codigo.upper())
+            if clave and clave not in vistos and es_codigo_valido(clave):
+                vistos.add(clave)
+                try:
+                    precio_num = float(precio)
+                except:
+                    precio_num = 0.0
                 repuestos.append({
                     "codigo": codigo,
-                    "descripcion": "",
-                    "cantidad": cantidad,
-                    "precio": precio
+                    "descripcion": descripcion,
+                    "nombre": nombre,
+                    "cantidad": "1.00",
+                    "precio": precio,
+                    "precio_num": precio_num,
+                    "precio_sin_iva": round(precio_num / 1.21, 2)
                 })
 
-        vistos = set()
-        repuestos_final = []
-        for r in repuestos:
-            clave = r["codigo"].replace("-", "")
-            if clave not in vistos:
-                vistos.add(clave)
-                repuestos_final.append(r)
+        # 1) Bloques 'Inspec: ... Rep: ...' con PRECIO y NOMBRE DE PIEZA
+        for repuesto in parsear_repuestos(self.texto):
+            agregar(
+                repuesto.get("codigo", ""),
+                repuesto.get("descripcion", ""),
+                repuesto.get("nombre", ""),
+                repuesto.get("precio", "0"),
+            )
 
-        self.datos["repuestos"] = repuestos_final
+        # 2) Fallback: códigos sueltos en otras líneas (solo códigos que empiezan con dígito)
+        for linea in self.lineas:
+            if re.search(r'Inspec\s*:', linea, re.IGNORECASE):
+                continue
+            for codigo in extraer_codigos(linea, patron=PATRON_CODIGO_DIGITO):
+                agregar(codigo)
+
+        self.datos["repuestos"] = repuestos
