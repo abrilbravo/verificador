@@ -119,11 +119,13 @@ class LectorOCR:
             if modelo_match:
                 self.datos["modelo"] = modelo_match.group(1).strip()
 
-        siniestro_match = re.search(r'SINIESTRO\s*[:]*\s*([0-9\-]+)', texto_upper, re.IGNORECASE)
+        siniestro_match = re.search(r'SINIESTRO\s*[:]*\s*N[º°]?\.?\s*:?\s*([0-9][0-9\-]*)', texto_upper, re.IGNORECASE)
+        if not siniestro_match:
+            siniestro_match = re.search(r'SINIESTRO\s*[:]*\s*([0-9][0-9\-]*)', texto_upper, re.IGNORECASE)
         if not siniestro_match:
             siniestro_match = re.search(r'([0-9]{3}[-][0-9][-][0-9]{6})', texto_upper)
         if siniestro_match:
-            self.datos["siniestro"] = siniestro_match.group(1)
+            self.datos["siniestro"] = siniestro_match.group(1).strip('-')
 
         remito_match = re.search(r'REMITO\s*[:]*\s*([0-9\s]+)', texto_upper, re.IGNORECASE)
         if remito_match:

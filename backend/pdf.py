@@ -68,16 +68,34 @@ class LectorPDF:
         return match.group(1) if match else ""
     
     def _buscar_siniestro(self, texto: str) -> str:
-        """Buscar número de siniestro"""
-        patron = r"SINIESTRO\s*([0-9\-]+)"
-        match = re.search(patron, texto, re.IGNORECASE)
-        return match.group(1) if match else ""
-    
+        """Buscar número de siniestro (soporta 'SINIESTRO:', 'Nº Siniestro', etc.)"""
+        patrones = [
+            r"SINIESTRO\s*:?\s*N[º°]?\.?\s*:?\s*([0-9][0-9\-]*)",
+            r"SINIESTRO\s*:?\s*([0-9][0-9\-]*)",
+            r"N[º°]?\.?\s*(?:DE\s+)?SINIESTRO\s*:?\s*([0-9][0-9\-]*)",
+            r"SINISTRO\s*:?\s*([0-9][0-9\-]*)",
+        ]
+        for patron in patrones:
+            match = re.search(patron, texto, re.IGNORECASE)
+            if match:
+                return match.group(1).strip('-')
+        match = re.search(r'\b[0-9]{3}-[0-9]-[0-9]{6}\b', texto)
+        if match:
+            return match.group(0)
+        return ""
+
     def _buscar_patente(self, texto: str) -> str:
-        """Buscar patente"""
-        patron = r"PATENTE\s*([A-Z0-9]+)"
-        match = re.search(patron, texto, re.IGNORECASE)
-        return match.group(1) if match else ""
+        """Buscar patente (formato ABC123DE, ABC123, o con guiones)."""
+        patrones = [
+            r"PATENTE\s*:?\s*([A-Z]{2}[0-9]{3}[A-Z]{2})",
+            r"PATENTE\s*:?\s*([A-Z]{3}[0-9]{3})",
+            r"PATENTE\s*:?\s*([A-Z0-9]{5,7})",
+        ]
+        for patron in patrones:
+            match = re.search(patron, texto, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return ""
     
     def _buscar_modelo(self, texto: str) -> str:
         """Buscar modelo"""
