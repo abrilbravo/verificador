@@ -50,12 +50,11 @@ def _limpiar_texto_rep(texto):
     """Limpia el contenido del campo 'Rep:':
     - quita fechas (27-07-2026, 31-08-2026, ...) que quedan dentro del texto,
     - quita el resto de casilla '-a-/-x-/-o-' del final,
-    - convierte el conector 'x' pegado (2H6823033DxGRU -> 2H6823033D GRU),
+    - no toca ninguna letra del codigo (la 'x' de 2H6823033DxGRU es parte del numero de pieza y se cuenta, sea mayuscula o minuscula),
     - elimina guiones finales sueltos."""
     t = str(texto)
     t = re.sub(r'\d{1,2}-\d{1,2}-\d{4}', ' ', t)
     t = re.sub(r'-[a-zox]-[\s-]*$', '', t, flags=re.IGNORECASE)
-    t = re.sub(r'(?<=[A-Za-z0-9])x(?=[A-Za-z0-9])', ' ', t)
     t = re.sub(r'\s*-\s*$', '', t)
     return t.strip()
 
