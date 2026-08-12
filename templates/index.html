@@ -276,7 +276,7 @@
         /* ===== ACCIONES ===== */
         .acciones {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
             flex-shrink: 0;
         }
@@ -296,8 +296,6 @@
             min-width: 0;
         }
         .action-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(16,32,62,.12); }
-        .action-card.neutro { cursor: default; }
-        .action-card.neutro:hover { transform: none; }
         .action-card .action-ico {
             width: 44px; height: 44px;
             border-radius: 11px;
@@ -321,7 +319,6 @@
         .action-card.amarillo:hover { border-color: var(--amber); }
         .action-card.verde .action-ico { background: var(--green-soft); color: var(--green); }
         .action-card.verde:hover { border-color: var(--green); }
-        .action-card.neutro .action-ico { background: var(--surface-2); color: var(--text-muted); }
 
         /* ===== CARDS GENÉRICAS ===== */
         .card {
@@ -675,10 +672,6 @@
                 <span class="action-ico"><i class="fas fa-copy"></i></span>
                 <span class="action-text"><b>COPIAR TODO</b><small>Copiar al portapapeles</small></span>
             </button>
-            <div class="action-card neutro">
-                <span class="action-ico"><i class="fas fa-arrows-left-right"></i></span>
-                <span class="action-text"><b>FLECHAS | CLICK COPIA</b><small>Flechas navegan · Doble click edita</small></span>
-            </div>
         </section>
 
         <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
