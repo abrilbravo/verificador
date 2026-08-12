@@ -47,14 +47,6 @@ def index():
 def verificar():
     return render_template('verificar.html', usuario=obtener_usuario())
 
-@app.route('/historial')
-def historial():
-    return render_template('historial.html', usuario=obtener_usuario())
-
-@app.route('/estadisticas')
-def estadisticas():
-    return render_template('estadisticas.html', usuario=obtener_usuario())
-
 @app.route('/api/cargar_pdf', methods=['POST'])
 def cargar_pdf():
     try:
@@ -192,29 +184,6 @@ def guardar_verificacion():
             'mensaje': 'Verificación guardada correctamente'
         })
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/historial', methods=['GET'])
-def obtener_historial():
-    try:
-        limite = request.args.get('limite', 100, type=int)
-        historial = db.obtener_historial(limite)
-        return jsonify({
-            'success': True,
-            'historial': historial
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/estadisticas', methods=['GET'])
-def obtener_estadisticas():
-    try:
-        stats = db.obtener_estadisticas()
-        return jsonify({
-            'success': True,
-            'estadisticas': stats
-        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

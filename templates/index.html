@@ -7,553 +7,796 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; max-width: 100%; }
-        
-        html, body {
-            height: 100%;
-            overflow: auto;
+        @font-face {
+            font-family: 'VWHead';
+            src: url('/assets/VWHeadBold.otf') format('opentype');
+            font-weight: 700;
         }
-        
+        @font-face {
+            font-family: 'VWText';
+            src: url('/assets/VWTextRegular.otf') format('opentype');
+            font-weight: 400;
+        }
+        @font-face {
+            font-family: 'VWText';
+            src: url('/assets/VWTextBold.otf') format('opentype');
+            font-weight: 700;
+        }
+
+        :root {
+            --bg: #F2F5F9;
+            --surface: #FFFFFF;
+            --surface-2: #F7F9FC;
+            --border: #E3E8F0;
+            --text: #16233B;
+            --text-muted: #6B7A94;
+            --primary: #004D98;
+            --primary-dark: #003A73;
+            --primary-soft: #E9F1FB;
+            --green: #1F9D55;
+            --green-soft: #E8F7EE;
+            --red: #E03131;
+            --red-soft: #FDEAEA;
+            --amber: #E8850C;
+            --amber-soft: #FFF2DF;
+            --sidebar-bg: #0B1B33;
+            --sidebar-line: #17294A;
+            --sidebar-text: #8CA2C4;
+            --shadow: 0 1px 3px rgba(16,32,62,.06), 0 8px 24px rgba(16,32,62,.06);
+            --shadow-soft: 0 1px 2px rgba(16,32,62,.05);
+            --radius: 14px;
+            --mono: 'Consolas', 'Courier New', monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0D1526;
+            --surface: #16223A;
+            --surface-2: #1B2944;
+            --border: #23345A;
+            --text: #E7EDF7;
+            --text-muted: #93A5C4;
+            --primary-soft: #16304F;
+            --green-soft: #123420;
+            --red-soft: #3A1717;
+            --amber-soft: #3A2A10;
+            --shadow: 0 1px 3px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+            --shadow-soft: 0 1px 2px rgba(0,0,0,.35);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { height: 100%; }
+
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #eef1f5;
-            font-size: 13px;
+            font-family: 'VWText', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            overflow-x: hidden;
         }
-        
+
         /* ===== SIDEBAR ===== */
         .sidebar {
             position: fixed;
-            top: 0;
-            bottom: 0;
-            left: 0;
+            top: 0; bottom: 0; left: 0;
             z-index: 100;
-            width: 210px;
-            background: #1A1A2E;
+            width: 250px;
+            background: var(--sidebar-bg);
             display: flex;
             flex-direction: column;
-            padding: 8px 0;
-            box-shadow: 2px 0 12px rgba(0,0,0,0.12);
+            padding: 18px 14px;
+            transition: width .25s ease;
+            overflow: hidden;
         }
+        .sidebar.collapsed { width: 68px; }
 
         .sidebar-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 6px 12px 8px;
-            border-bottom: 1px solid #2a2a4a;
-            margin-bottom: 8px;
+            gap: 12px;
+            padding: 2px 6px 18px;
+            border-bottom: 1px solid var(--sidebar-line);
+            margin-bottom: 18px;
+            white-space: nowrap;
         }
         .sidebar-brand .vw-icon {
-            width: 42px;
-            height: 42px;
+            width: 46px; height: 46px;
             border-radius: 50%;
             overflow: hidden;
             flex-shrink: 0;
-            background: #1A1A2E;
-        }
-        .sidebar-brand .vw-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: brightness(0) invert(1);
-        }
-        .sidebar-brand .brand-text {
-            display: flex;
-            flex-direction: column;
-        }
-        .sidebar-brand .brand-text .title {
-            font-size: 14px;
-            font-weight: 700;
-            color: white;
-            line-height: 1.1;
-        }
-        .sidebar-brand .brand-text .sub {
-            font-size: 10px;
-            color: #7a8aaa;
-            line-height: 1.2;
-        }
-
-        .sidebar-nav {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            padding: 0 8px;
-        }
-
-        .sidebar .nav-link {
-            color: #7a8aaa !important;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 500;
-            border-radius: 6px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-        .sidebar .nav-link i {
-            width: 18px;
-            text-align: center;
-            font-size: 14px;
-        }
-        .sidebar .nav-link:hover {
-            background: rgba(255,255,255,0.08);
-            color: white !important;
-        }
-        .sidebar .nav-link.active {
-            background: #2D3A6B;
-            color: white !important;
-        }
-
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 6px 12px;
-            border-top: 1px solid #2a2a4a;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .sidebar-footer .user-icon {
-            color: #5a6a8a;
-            font-size: 14px;
-        }
-        .sidebar-footer .user-name {
-            font-size: 13px;
-            color: #5a6a8a;
-        }
-
-        /* ===== SIDEBAR TOGGLE ===== */
-        .sidebar-toggle {
+            background: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 8px;
-            border-top: 1px solid #2a2a4a;
+            box-shadow: 0 0 0 3px rgba(255,255,255,.08), 0 4px 14px rgba(0,0,0,.4);
+        }
+        .sidebar-brand .vw-icon img { width: 100%; height: 100%; object-fit: contain; }
+        .sidebar-brand .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+        .sidebar-brand .brand-text .title {
+            font-family: 'VWHead', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+        .sidebar-brand .brand-text .sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 2px; }
+
+        .sidebar-nav { display: flex; flex-direction: column; gap: 6px; }
+        .sidebar .nav-link {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            padding: 12px 14px;
+            border-radius: 11px;
+            font-size: 13.5px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all .18s ease;
+        }
+        .sidebar .nav-link .nav-ico {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .sidebar .nav-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+        .sidebar .nav-link.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(0,77,152,.4);
+        }
+        .sidebar .nav-link.active::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-left: 9px solid var(--primary);
+        }
+
+        /* Arte decorativo (silueta auto/tecnología) */
+        .sidebar-art {
+            margin-top: auto;
+            opacity: .55;
+            padding: 0 4px;
+        }
+        .sidebar-art svg { width: 100%; height: auto; }
+
+        .sidebar-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 14px 6px 0;
+            border-top: 1px solid var(--sidebar-line);
+            white-space: nowrap;
+        }
+        .sidebar-footer .org {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+        }
+        .sidebar-footer .org .org-ico {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.08);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--sidebar-text);
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .sidebar-footer .org .org-name { font-size: 12px; color: var(--sidebar-text); }
+        .sidebar-footer .collapse-btn {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,.08);
+            color: var(--sidebar-text);
             cursor: pointer;
-            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+            transition: all .2s ease;
         }
-        .sidebar-toggle:hover { background: rgba(255,255,255,0.05); }
-        .sidebar-toggle i {
-            color: #7a8aaa;
-            font-size: 14px;
-            transition: transform 0.3s;
-        }
-        .sidebar-toggle:hover i { color: white; }
+        .sidebar-footer .collapse-btn:hover { background: var(--primary); color: #fff; }
+        .sidebar-footer .collapse-btn i { transition: transform .25s ease; }
 
-        /* ===== SIDEBAR COLLAPSED ===== */
-        .sidebar.collapsed { width: 60px; }
-        .sidebar.collapsed .brand-text { display: none; }
-        .sidebar.collapsed .nav-link span { display: none; }
-        .sidebar.collapsed .nav-link { justify-content: center; padding: 10px; gap: 0; }
-        .sidebar.collapsed .nav-link i { width: auto; font-size: 16px; }
-        .sidebar.collapsed .sidebar-brand { justify-content: center; padding: 6px 8px 8px; }
-        .sidebar.collapsed .sidebar-footer { justify-content: center; padding: 6px 8px; }
-        .sidebar.collapsed .user-name { display: none; }
-        .sidebar.collapsed .sidebar-toggle i { transform: rotate(180deg); }
-        .sidebar.collapsed ~ main { margin-left: 60px; width: calc(100% - 60px); }
+        /* Sidebar colapsado */
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .nav-label,
+        .sidebar.collapsed .org-name,
+        .sidebar.collapsed .sidebar-art { display: none; }
+        .sidebar.collapsed .sidebar-brand { justify-content: center; padding: 2px 0 18px; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding: 13px; }
+        .sidebar.collapsed .nav-link.active::after { right: -10px; }
+        .sidebar.collapsed .sidebar-footer { justify-content: center; }
+        .sidebar.collapsed .collapse-btn i { transform: rotate(180deg); }
 
-        /* ===== MAIN CONTENT ===== */
+        /* ===== MAIN ===== */
         main {
-            margin-left: 210px;
-            padding: 8px 12px;
+            margin-left: 250px;
+            padding: 22px 26px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
-            overflow-x: hidden;
-            background: #f0f2f6;
-            width: calc(100% - 210px);
+            gap: 16px;
+            transition: margin-left .25s ease;
         }
-        
+        .sidebar.collapsed ~ main { margin-left: 68px; }
+
         /* ===== HEADER ===== */
         .main-header {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
-            padding: 2px 0 4px;
-            border-bottom: 1px solid #dce1e8;
+            gap: 16px;
             flex-shrink: 0;
+        }
+        .main-header .title-group { display: flex; align-items: center; gap: 14px; }
+        .main-header .title-ico {
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
         }
         .main-header h1 {
-            font-size: 17px;
-            font-weight: 600;
+            font-family: 'VWHead', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
             margin: 0;
-            color: #1a2332;
+            color: var(--text);
+            letter-spacing: .5px;
         }
-        .main-header h1 i { color: #2F80ED; margin-right: 5px; font-size: 14px; }
-        .main-header .badge-version {
-            font-size: 10px;
-            background: #2F80ED;
-            color: white;
-            padding: 1px 8px;
-            border-radius: 10px;
-        }
-        
-        /* ===== TOOLBAR ===== */
-        .toolbar {
-            display: flex;
-            gap: 4px;
-            padding: 3px 0;
-            flex-shrink: 0;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .toolbar .btn {
-            padding: 5px 12px;
-            font-size: 12px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        .toolbar .btn i { font-size: 13px; margin-right: 2px; }
-        .toolbar .hint {
-            font-size: 13px;
-            color: #8a9aaa;
-            align-self: center;
-            margin-left: 4px;
-            background: white;
-            padding: 4px 12px;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        
-        /* ===== DATOS REMITO ===== */
-        .datos-remito {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-            gap: 6px 20px;
-            padding: 12px 16px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            flex-shrink: 0;
-            margin-bottom: 3px;
-        }
-        .datos-remito .item {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            padding: 1px 0;
-        }
-        .datos-remito .item label {
-            font-weight: 600;
-            color: #6a7a8a;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            margin: 0;
-            white-space: nowrap;
-            min-width: 42px;
-        }
-        .datos-remito .item span {
-            font-weight: 500;
-            color: #1a2332;
+        .main-header .subtitle { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+        .main-header .header-actions { display: flex; align-items: center; gap: 10px; }
+        .main-header .icon-btn {
+            position: relative;
+            width: 40px; height: 40px;
+            border-radius: 11px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
             font-size: 15px;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            box-shadow: var(--shadow-soft);
+            transition: all .18s ease;
+        }
+        .main-header .icon-btn:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-1px); }
+        .main-header .icon-btn .dot {
+            position: absolute;
+            top: 8px; right: 9px;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--red);
+            border: 2px solid var(--surface);
+        }
+        .main-header .avatar {
+            width: 40px; height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #004D98, #00A2E8);
+            color: #fff;
+            font-family: 'VWHead', sans-serif;
+            font-size: 15px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,77,152,.35);
+        }
+
+        /* ===== ACCIONES ===== */
+        .acciones {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .action-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            text-align: left;
+            color: var(--text);
+            transition: all .18s ease;
+            min-width: 0;
+        }
+        .action-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(16,32,62,.12); }
+        .action-card.neutro { cursor: default; }
+        .action-card.neutro:hover { transform: none; }
+        .action-card .action-ico {
+            width: 44px; height: 44px;
+            border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 19px;
+            flex-shrink: 0;
+        }
+        .action-card .action-text { display: flex; flex-direction: column; min-width: 0; }
+        .action-card .action-text b {
+            font-family: 'VWHead', sans-serif;
+            font-size: 13px;
+            letter-spacing: .4px;
             white-space: nowrap;
         }
-        .datos-remito .item span.text-primary { color: #2F80ED; }
-        
+        .action-card .action-text small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .action-card.azul .action-ico { background: var(--primary-soft); color: var(--primary); }
+        .action-card.azul:hover { border-color: var(--primary); }
+        .action-card.rojo .action-ico { background: var(--red-soft); color: var(--red); }
+        .action-card.rojo:hover { border-color: var(--red); }
+        .action-card.amarillo .action-ico { background: var(--amber-soft); color: var(--amber); }
+        .action-card.amarillo:hover { border-color: var(--amber); }
+        .action-card.verde .action-ico { background: var(--green-soft); color: var(--green); }
+        .action-card.verde:hover { border-color: var(--green); }
+        .action-card.neutro .action-ico { background: var(--surface-2); color: var(--text-muted); }
+
+        /* ===== CARDS GENÉRICAS ===== */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        /* ===== DATOS REMITO ===== */
+        .card-remito {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1.6fr 1fr;
+            gap: 16px 24px;
+            padding: 18px 22px;
+            align-items: stretch;
+            flex-shrink: 0;
+        }
+        .card-remito .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+        .card-remito .field label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .card-remito .field label i { font-size: 11px; color: var(--primary); }
+        .card-remito .field .value {
+            display: flex; align-items: center; gap: 8px;
+            min-width: 0;
+        }
+        .card-remito .field .value span {
+            font-family: var(--mono);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            border-left: 3px solid var(--primary);
+            padding-left: 9px;
+        }
+        .card-remito .copy-mini {
+            border: none; background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity .15s ease, color .15s ease;
+            padding: 2px;
+        }
+        .card-remito .field:hover .copy-mini { opacity: 1; }
+        .card-remito .copy-mini:hover { color: var(--primary); }
+
         /* ===== TABLA ===== */
-        .table-wrapper {
+        .card-tabla {
             flex: 1;
             overflow: hidden;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 220px;
         }
-        
-        .table-wrapper table {
-            font-size: 11px;
-            margin: 0;
+        .table-scroll { flex: 1; overflow: auto; }
+        .table-scroll table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            font-size: 13px;
         }
-        
-        .table-wrapper thead th {
+        .table-scroll thead th {
             position: sticky;
             top: 0;
-            z-index: 10;
-            background: #f4f6f9;
-            color: #3a4a6a;
-            font-weight: 600;
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            padding: 5px 6px;
-            border-bottom: 2px solid #dce1e8;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .table-wrapper thead th.text-right { text-align: right; }
-        .table-wrapper thead th.text-center { text-align: center; }
-        
-        .table-wrapper tbody td {
-            padding: 3px 6px;
-            vertical-align: middle;
-            border-bottom: 1px solid #f0f2f5;
-            white-space: normal;
-            word-break: break-word;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            height: 22px;
-            cursor: pointer;
-            transition: background 0.1s;
+            z-index: 5;
+            background: #0B1B33;
+            color: #B9C9E2;
+            font-family: 'VWHead', sans-serif;
             font-size: 11px;
-        }
-        
-        .table-wrapper tbody tr { transition: background 0.1s; }
-        .table-wrapper tbody tr:hover { background: #f5f8fc; }
-        
-        /* Celda seleccionada */
-        .table-wrapper tbody td.cell-selected {
-            background: #2F80ED !important;
-            color: white !important;
-            outline: 2px solid #1A6BC4;
-            outline-offset: -1px;
-            border-radius: 2px;
-        }
-        .table-wrapper tbody td.cell-selected .copy-hint,
-        .table-wrapper tbody td.cell-selected i { color: white !important; }
-        
-        .table-wrapper tbody tr.row-selected td { background: #eef4fb; }
-        .table-wrapper tbody tr.row-selected td.cell-selected { background: #2F80ED !important; color: white !important; }
-        
-        /* ===== ANCHOS EN PORCENTAJES ===== */
-        .col-index { width: 5%; text-align: center; }
-        .col-codigo { width: 22%; }
-        .col-descripcion { width: 28%; }
-        .col-cantidad { width: 8%; text-align: center; }
-        .col-precio-sin { width: 18%; text-align: right; }
-        .col-precio-con { width: 19%; text-align: right; }
-        
-        .table-wrapper .codigo-cell {
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 11px;
-            font-weight: 500;
-            color: #1a2332;
-        }
-        
-        .table-wrapper .precio-cell { font-weight: 600; font-size: 11px; }
-        .table-wrapper .precio-cell.sin-iva { color: #2F80ED; }
-        .table-wrapper .precio-cell.con-iva { color: #5a6a7a; }
-        .table-wrapper .cantidad-cell { text-align: center; color: #5a6a8a; }
-        .table-wrapper .index-cell { text-align: center; color: #aab8cc; font-size: 9px; }
-        
-        .table-wrapper .copy-hint {
-            opacity: 0.1;
-            font-size: 7px;
-            margin-left: 2px;
-            transition: opacity 0.2s;
-        }
-        .table-wrapper td:hover .copy-hint { opacity: 0.5; }
-        
-        /* ===== FOOTER ===== */
-        .footer-resumen {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 4px 10px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            flex-shrink: 0;
-            margin-top: 3px;
-            font-size: 10px;
-        }
-        .footer-resumen .total-item {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .footer-resumen .total-item label {
-            color: #6a7a8a;
-            font-weight: 500;
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            margin: 0;
-        }
-        .footer-resumen .total-item .value {
             font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            padding: 12px 14px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .table-scroll thead th.col-index { width: 56px; text-align: center; }
+        .table-scroll thead th.col-codigo { width: 30%; }
+        .table-scroll thead th.col-descripcion { width: 38%; }
+        .table-scroll thead th.col-cantidad { width: 8%; text-align: center; }
+        .table-scroll thead th.col-precio { width: 24%; text-align: right; }
+
+        .table-scroll tbody td {
+            padding: 9px 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+            cursor: pointer;
+            transition: background .12s ease;
+        }
+        .table-scroll tbody tr { transition: background .12s ease; }
+        .table-scroll tbody tr:hover { background: var(--surface-2); }
+        .table-scroll tbody tr.row-selected td { background: var(--primary-soft); }
+
+        .index-cell { text-align: center; }
+        .row-num {
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-family: 'VWHead', sans-serif;
             font-size: 12px;
+            font-weight: 700;
         }
-        .footer-resumen .total-item .value.azul { color: #2F80ED; }
-        .footer-resumen .total-item .value.verde { color: #27AE60; }
-        .footer-resumen .total-item .value.gris { color: #5a6a7a; }
-        .footer-resumen .badge-count {
-            background: #eef1f5;
-            color: #3a4a6a;
-            padding: 0 8px;
-            border-radius: 10px;
-            font-size: 10px;
+        .codigo-cell {
+            font-family: var(--mono);
             font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        
+        .codigo-cell .codigo-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desc-cell { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cant-cell { text-align: center; color: var(--text-muted); }
+        .precio-cell {
+            text-align: right;
+            font-family: var(--mono);
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .cell-copy {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all .15s ease;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+        td:hover .cell-copy { opacity: 1; }
+        .cell-copy:hover { color: var(--primary); transform: scale(1.15); }
+
+        .table-scroll tbody td.cell-selected {
+            background: var(--primary) !important;
+            color: #fff !important;
+            border-radius: 6px;
+        }
+        .table-scroll tbody td.cell-selected .row-num,
+        .table-scroll tbody td.cell-selected .cell-copy,
+        .table-scroll tbody td.cell-selected i { color: #fff !important; background: transparent; }
+        .table-scroll tbody td.cell-selected .row-num { background: rgba(255,255,255,.2); }
+
+        .table-scroll .empty {
+            padding: 40px 14px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .table-scroll .empty i { margin-right: 6px; color: var(--primary); }
+
+        /* ===== FOOTER / RESUMEN ===== */
+        .footer-resumen {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            padding: 16px 20px;
+            flex-shrink: 0;
+        }
+        .resumen-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            min-width: 0;
+        }
+        .resumen-item .res-ico {
+            width: 42px; height: 42px;
+            border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .resumen-item .res-body { display: flex; flex-direction: column; min-width: 0; }
+        .resumen-item .res-body label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .resumen-item .res-body b {
+            font-family: var(--mono);
+            font-size: 19px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .resumen-item .res-body small { font-size: 11px; color: var(--text-muted); }
+        .resumen-item.repuestos .res-ico { background: var(--amber-soft); color: var(--amber); }
+        .resumen-item.siniva { position: relative; overflow: hidden; }
+        .resumen-item.siniva .res-ico { background: var(--primary-soft); color: var(--primary); }
+        .resumen-item.siniva .res-body b { color: var(--primary); }
+        .resumen-item.coniva .res-ico { background: var(--green-soft); color: var(--green); }
+        .resumen-item.coniva .res-body b { color: var(--green); }
+
+        /* mini barras decorativas (discretas) */
+        .mini-bars {
+            position: absolute;
+            right: 16px; bottom: 14px;
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            opacity: .5;
+        }
+        .mini-bars span {
+            width: 5px;
+            border-radius: 2px;
+            background: var(--primary);
+            display: block;
+        }
+        .mini-bars span:nth-child(1) { height: 10px; }
+        .mini-bars span:nth-child(2) { height: 16px; }
+        .mini-bars span:nth-child(3) { height: 22px; }
+        .mini-bars span:nth-child(4) { height: 14px; }
+
         /* ===== TOOLTIP ===== */
         .copy-tooltip {
             position: fixed;
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 6px 16px;
-            border-radius: 4px;
+            top: 18px; right: 20px;
+            background: #16233B;
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 9px;
             font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0,0,0,.25);
             pointer-events: none;
             z-index: 9999;
-            animation: fadeInUp 0.2s ease;
+            animation: slideIn .25s ease;
         }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(4px); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
-        @media (max-width: 768px) {
-            .sidebar { width: 50px; }
-            .sidebar .brand-text, .sidebar .nav-link span, .sidebar-footer .user-name { display: none; }
-            .sidebar-brand { justify-content: center; padding: 8px; }
-            .sidebar .nav-link { justify-content: center; padding: 8px; }
-            .sidebar-footer { justify-content: center; }
-            main { margin-left: 50px; padding: 4px 6px; }
-            .datos-remito { grid-template-columns: 1fr 1fr; font-size: 9px; padding: 2px 6px; }
-            .col-descripcion { width: 20%; }
-            .col-codigo { width: 18%; }
-            .col-precio-sin, .col-precio-con { width: 12%; }
-            .footer-resumen { flex-wrap: wrap; gap: 2px; font-size: 8px; }
-            .toolbar .hint { display: none; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1400px) {
+            .card-remito { grid-template-columns: 1fr 1fr 1fr; }
+            .card-remito .field.wide { grid-column: span 3; }
         }
-        @media (max-width: 480px) {
-            .datos-remito { grid-template-columns: 1fr; }
-            .toolbar .btn { font-size: 8px; padding: 1px 5px; }
+        @media (max-width: 1100px) {
+            .acciones { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 68px; }
+            .sidebar .brand-text, .sidebar .nav-label, .sidebar .org-name, .sidebar .sidebar-art { display: none; }
+            .sidebar-brand { justify-content: center; }
+            .sidebar .nav-link { justify-content: center; padding: 13px; }
+            .sidebar-footer { justify-content: center; }
+            main { margin-left: 68px; padding: 14px; }
+            .acciones { grid-template-columns: 1fr 1fr; }
+            .footer-resumen { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid p-0 h-100">
-        <div class="row g-0 h-100">
-            <!-- SIDEBAR -->
-            <nav class="sidebar">
-                <div class="sidebar-brand">
-                    <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
-                    <div class="brand-text">
-                        <span class="title">VERIFICADOR</span>
-                        <span class="sub">v3.0</span>
-                    </div>
-                </div>
-                <div class="sidebar-nav">
-                    <a class="nav-link active" href="/">
-                        <i class="fas fa-file-alt"></i><span>Nuevo Remito</span>
-                    </a>
-                    <a class="nav-link" href="/verificar">
-                        <i class="fas fa-check-circle"></i><span>Verificar</span>
-                    </a>
-                    <a class="nav-link" href="/historial">
-                        <i class="fas fa-history"></i><span>Historial</span>
-                    </a>
-                    <a class="nav-link" href="/estadisticas">
-                        <i class="fas fa-chart-bar"></i><span>Estadísticas</span>
-                    </a>
-                </div>
-                <div class="sidebar-footer">
-                    <i class="fas fa-user user-icon"></i>
-                    <span class="user-name">Volkswagen Org Sur</span>
-                </div>
-                <div class="sidebar-toggle" onclick="toggleSidebar()">
-                    <i class="fas fa-chevron-left"></i>
-                </div>
-            </nav>
-
-            <!-- MAIN -->
-            <main>
-                <!-- HEADER -->
-                <div class="main-header">
-                    <h1><i class="fas fa-file-alt"></i>Nuevo Remito</h1>
-                    <span class="badge-version">v3.0</span>
-                </div>
-
-                <!-- TOOLBAR -->
-                <div class="toolbar">
-                    <button class="btn btn-primary btn-sm" onclick="document.getElementById('fileInput').click()">
-                        <i class="fas fa-file-pdf"></i>Cargar PDF
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="limpiarDatos()">
-                        <i class="fas fa-eraser"></i>Limpiar
-                    </button>
-                    <button class="btn btn-warning btn-sm" onclick="copiarDatos()">
-                        <i class="fas fa-copy"></i>Datos
-                    </button>
-                    <button class="btn btn-success btn-sm" onclick="copiarRepuestosYPrecios()">
-                        <i class="fas fa-table"></i>Copiar todo
-                    </button>
-                    <span class="hint">
-                        <i class="fas fa-arrows-alt"></i> Flechas | Click copia
-                    </span>
-                </div>
-
-                <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
-
-                <!-- DATOS REMITO -->
-                <div class="datos-remito">
-                    <div class="item"><label>REMITO</label><span id="remitoDisplay">-</span></div>
-                    <div class="item"><label>ORDEN</label><span id="ordenDisplay" class="text-primary">-</span></div>
-                    <div class="item"><label>SINIESTRO</label><span id="siniestroDisplay" class="text-primary">-</span></div>
-                    <div class="item"><label>MODELO</label><span id="modeloDisplay">-</span></div>
-                    <div class="item"><label>PATENTE</label><span id="patenteDisplay" class="text-primary">-</span></div>
-                </div>
-
-                <!-- TABLA -->
-                <div class="table-wrapper" id="tableWrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="col-index text-center">#</th>
-                                <th class="col-codigo">Código</th>
-                                <th class="col-descripcion">Descripción</th>
-                                <th class="col-cantidad text-center">Cant.</th>
-                                <th class="col-precio-sin text-right">s/IVA</th>
-                                <th class="col-precio-con text-right">c/IVA</th>
-                            </tr>
-                        </thead>
-                        <tbody id="repuestosBody">
-                            <tr>
-                                <td colspan="6" class="text-center text-secondary py-2" style="font-size:11px;">
-                                    <i class="fas fa-file-pdf me-1"></i> Cargá un PDF
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- FOOTER -->
-                <div class="footer-resumen">
-                    <div class="total-item">
-                        <label><i class="fas fa-box"></i> Rep.</label>
-                        <span class="badge-count" id="repuestosCount">0</span>
-                    </div>
-                    <div class="total-item">
-                        <label>Total s/IVA</label>
-                        <span class="value azul" id="totalSinIva">$0.00</span>
-                    </div>
-                    <div class="total-item">
-                        <label>Total c/IVA</label>
-                        <span class="value gris" id="totalConIva">$0.00</span>
-                    </div>
-                    <div class="total-item">
-                        <label>IVA (21%)</label>
-                        <span class="value gris" id="totalIva">$0.00</span>
-                    </div>
-                </div>
-            </main>
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
+            <div class="brand-text">
+                <span class="title">VERIFICADOR</span>
+                <span class="sub">v3.0</span>
+            </div>
         </div>
-    </div>
+
+        <nav class="sidebar-nav">
+            <a class="nav-link active" href="/">
+                <span class="nav-ico"><i class="fas fa-file-alt"></i></span>
+                <span class="nav-label">Nuevo Remito</span>
+            </a>
+            <a class="nav-link" href="/verificar">
+                <span class="nav-ico"><i class="fas fa-shield-alt"></i></span>
+                <span class="nav-label">Verificar</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-art">
+            <svg viewBox="0 0 220 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 70 L70 70 L85 44 L130 44 L152 70 L210 70" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M90 44 L100 28 L150 28 L160 44" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="62" cy="70" r="7" stroke="#2E4A7A" stroke-width="3"/>
+                <circle cx="200" cy="70" r="7" stroke="#2E4A7A" stroke-width="3"/>
+                <circle cx="62" cy="70" r="2.5" fill="#2E4A7A"/>
+                <circle cx="200" cy="70" r="2.5" fill="#2E4A7A"/>
+                <path d="M120 28 L150 28" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round"/>
+                <path d="M128 36 L142 36" stroke="#2E4A7A" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="org">
+                <span class="org-ico"><i class="fas fa-user"></i></span>
+                <span class="org-name">Volkswagen Org Sur</span>
+            </div>
+            <button class="collapse-btn" onclick="toggleSidebar()" title="Contraer barra">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+    </aside>
+
+    <main>
+        <!-- HEADER -->
+        <header class="main-header">
+            <div class="title-group">
+                <div class="title-ico"><i class="fas fa-file-invoice"></i></div>
+                <div>
+                    <h1>Nuevo Remito</h1>
+                    <p class="subtitle">Documento · Cargá y gestioná la información del remito</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" title="Modo oscuro / claro">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="icon-btn" title="Notificaciones">
+                    <i class="fas fa-bell"></i><span class="dot"></span>
+                </button>
+                <div class="avatar" title="Usuario">RA</div>
+            </div>
+        </header>
+
+        <!-- ACCIONES -->
+        <section class="acciones">
+            <button class="action-card azul" onclick="document.getElementById('fileInput').click()">
+                <span class="action-ico"><i class="fas fa-file-pdf"></i></span>
+                <span class="action-text"><b>CARGAR PDF</b><small>Seleccionar archivo</small></span>
+            </button>
+            <button class="action-card rojo" onclick="limpiarDatos()">
+                <span class="action-ico"><i class="fas fa-trash"></i></span>
+                <span class="action-text"><b>LIMPIAR</b><small>Borrar todo</small></span>
+            </button>
+            <button class="action-card amarillo" onclick="copiarDatos()">
+                <span class="action-ico"><i class="fas fa-database"></i></span>
+                <span class="action-text"><b>DATOS</b><small>Ver / editar datos</small></span>
+            </button>
+            <button class="action-card verde" onclick="copiarRepuestosYPrecios()">
+                <span class="action-ico"><i class="fas fa-copy"></i></span>
+                <span class="action-text"><b>COPIAR TODO</b><small>Copiar al portapapeles</small></span>
+            </button>
+            <div class="action-card neutro">
+                <span class="action-ico"><i class="fas fa-arrows-left-right"></i></span>
+                <span class="action-text"><b>FLECHAS | CLICK COPIA</b><small>Navegación rápida</small></span>
+            </div>
+        </section>
+
+        <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
+
+        <!-- DATOS REMITO -->
+        <section class="card card-remito">
+            <div class="field">
+                <label><i class="fas fa-file-invoice"></i> Remito</label>
+                <div class="value">
+                    <span id="remitoDisplay">-</span>
+                    <button class="copy-mini" data-copy="remitoDisplay" title="Copiar"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+            <div class="field">
+                <label><i class="fas fa-clipboard-list"></i> Orden</label>
+                <div class="value">
+                    <span id="ordenDisplay">-</span>
+                    <button class="copy-mini" data-copy="ordenDisplay" title="Copiar"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+            <div class="field">
+                <label><i class="fas fa-shield-halved"></i> Siniestro</label>
+                <div class="value">
+                    <span id="siniestroDisplay">-</span>
+                    <button class="copy-mini" data-copy="siniestroDisplay" title="Copiar"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+            <div class="field wide">
+                <label><i class="fas fa-car"></i> Modelo</label>
+                <div class="value">
+                    <span id="modeloDisplay">-</span>
+                    <button class="copy-mini" data-copy="modeloDisplay" title="Copiar"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+            <div class="field">
+                <label><i class="fas fa-id-card"></i> Patente</label>
+                <div class="value">
+                    <span id="patenteDisplay">-</span>
+                    <button class="copy-mini" data-copy="patenteDisplay" title="Copiar"><i class="fas fa-copy"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TABLA -->
+        <section class="card card-tabla">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-index">#</th>
+                            <th class="col-codigo">Código</th>
+                            <th class="col-descripcion">Descripción</th>
+                            <th class="col-cantidad">Cant.</th>
+                            <th class="col-precio">S/IVA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repuestosBody">
+                        <tr>
+                            <td colspan="5" class="empty"><i class="fas fa-file-pdf"></i> Cargá un PDF para ver los repuestos</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- FOOTER / RESUMEN -->
+        <footer class="card footer-resumen">
+            <div class="resumen-item repuestos">
+                <span class="res-ico"><i class="fas fa-boxes"></i></span>
+                <div class="res-body">
+                    <b id="repuestosCount">0</b>
+                    <small>items cargados</small>
+                </div>
+            </div>
+            <div class="resumen-item siniva">
+                <span class="res-ico"><i class="fas fa-file-invoice-dollar"></i></span>
+                <div class="res-body">
+                    <label>Total s/IVA</label>
+                    <b id="totalSinIva">$0.00</b>
+                </div>
+                <div class="mini-bars"><span></span><span></span><span></span><span></span></div>
+            </div>
+            <div class="resumen-item coniva">
+                <span class="res-ico"><i class="fas fa-check-circle"></i></span>
+                <div class="res-body">
+                    <label>Total c/IVA</label>
+                    <b id="totalConIva">$0.00</b>
+                </div>
+            </div>
+        </footer>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        /* ===== SIDEBAR ===== */
         function toggleSidebar() {
             const sb = document.querySelector('.sidebar');
             sb.classList.toggle('collapsed');
@@ -563,12 +806,42 @@
             document.querySelector('.sidebar').classList.add('collapsed');
         }
 
+        /* ===== TEMA OSCURO / CLARO ===== */
+        function toggleTheme() {
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+            localStorage.setItem('theme', dark ? 'light' : 'dark');
+            updateThemeIcon();
+        }
+        function updateThemeIcon() {
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+        updateThemeIcon();
+
+        /* ===== ESTADO ===== */
         let datosPdf = {};
         let repuestosData = [];
         let celdaSeleccionada = null;
         let filaSeleccionada = null;
 
-        // ============ SIN MODIFICAR CÓDIGOS - SE MUESTRAN COMO VIENEN ============
+        /* ===== COPIAR DESDE LOS CAMPOS DEL REMITO ===== */
+        document.querySelectorAll('.copy-mini').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.copy;
+                const el = document.getElementById(id);
+                if (el && el.textContent && el.textContent !== '-') {
+                    copiarTexto(el.textContent, 'Copiado: ' + el.textContent);
+                }
+            });
+        });
+
+        /* ============ CÓDIGOS SE MUESTRAN COMO VIENEN ============ */
         function formatearCodigo(codigo) {
             if (!codigo) return codigo;
             let limpio = codigo.trim().toUpperCase();
@@ -579,28 +852,29 @@
             return limpio;
         }
 
+        /* ===== PROCESAR PDF ===== */
         function procesarPDF(input) {
             const file = input.files[0];
             if (!file) return;
-            
+
             const formData = new FormData();
             formData.append('file', file);
-            
+
             Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            
+
             fetch('/api/cargar_pdf', { method: 'POST', body: formData })
             .then(response => response.json())
             .then(data => {
                 Swal.close();
                 if (data.error) { Swal.fire('Error', data.error, 'error'); return; }
-                
+
                 datosPdf = data.datos;
                 document.getElementById('remitoDisplay').textContent = data.datos.remito || '-';
                 document.getElementById('ordenDisplay').textContent = data.datos.orden || '-';
                 document.getElementById('siniestroDisplay').textContent = data.datos.siniestro || '-';
                 document.getElementById('modeloDisplay').textContent = data.datos.modelo || '-';
                 document.getElementById('patenteDisplay').textContent = data.datos.patente || '-';
-                
+
                 const repuestosFormateados = data.repuestos.map(rep => {
                     const codigo = formatearCodigo(rep.codigo || '');
                     const precioSinIva = rep.precio_sin_iva || 0;
@@ -611,81 +885,88 @@
                         precio_con_iva: precioSinIva * 1.21
                     };
                 });
-                
+
                 repuestosData = repuestosFormateados;
                 actualizarTabla(repuestosFormateados);
                 actualizarResumen(repuestosFormateados);
-                
+
                 Swal.fire({ icon: 'success', title: 'PDF cargado', text: `${repuestosFormateados.length} repuestos`, timer: 1200, showConfirmButton: false });
             })
             .catch(error => { Swal.close(); Swal.fire('Error', 'Error al procesar el PDF', 'error'); });
-            
+
             input.value = '';
         }
 
+        /* ===== TABLA ===== */
         function actualizarTabla(repuestos) {
             const tbody = document.getElementById('repuestosBody');
             tbody.innerHTML = '';
             document.getElementById('repuestosCount').textContent = repuestos.length;
-            
+
             if (!repuestos || repuestos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-secondary py-2" style="font-size:11px;"><i class="fas fa-file-pdf me-1"></i> Cargá un PDF</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="empty"><i class="fas fa-file-pdf"></i> Cargá un PDF para ver los repuestos</td></tr>`;
                 return;
             }
-            
+
             repuestos.forEach((rep, index) => {
                 const tr = document.createElement('tr');
                 tr.dataset.index = index;
                 tr.setAttribute('tabindex', '0');
-                
+
                 const precioSin = (rep.precio_sin_iva || 0);
-                const precioCon = (rep.precio_con_iva || 0);
-                
+
                 tr.dataset.codigo = rep.codigo || '';
                 tr.dataset.precioSin = precioSin.toFixed(2);
-                tr.dataset.precioCon = precioCon.toFixed(2);
                 tr.dataset.descripcion = rep.descripcion || '';
                 tr.dataset.cantidad = rep.cantidad || '1';
-                
+
                 tr.innerHTML = `
-                    <td class="index-cell col-index">${index + 1}</td>
-                    <td class="codigo-cell col-codigo" data-col="1" title="${rep.codigo || ''}">${rep.codigo || ''} <span class="copy-hint"><i class="fas fa-copy"></i></span></td>
-                    <td class="col-descripcion" data-col="2" title="${rep.descripcion || ''}">${rep.descripcion || ''}</td>
-                    <td class="cantidad-cell col-cantidad" data-col="3">${rep.cantidad || '1'}</td>
-                    <td class="precio-cell sin-iva col-precio-sin" data-col="4">$${precioSin.toFixed(2)} <span class="copy-hint"><i class="fas fa-copy"></i></span></td>
-                    <td class="precio-cell con-iva col-precio-con" data-col="5">$${precioCon.toFixed(2)} <span class="copy-hint"><i class="fas fa-copy"></i></span></td>
+                    <td class="index-cell"><span class="row-num">${index + 1}</span></td>
+                    <td class="codigo-cell" data-col="1" title="${rep.codigo || ''}">
+                        <span class="codigo-text">${rep.codigo || ''}</span>
+                        <button class="cell-copy" data-copy="${rep.codigo || ''}" title="Copiar código"><i class="fas fa-copy"></i></button>
+                    </td>
+                    <td class="desc-cell" data-col="2" title="${rep.descripcion || ''}">${rep.descripcion || ''}</td>
+                    <td class="cant-cell" data-col="3">${rep.cantidad || '1'}</td>
+                    <td class="precio-cell" data-col="4">$${precioSin.toFixed(2)}<button class="cell-copy" data-copy="${precioSin.toFixed(2)}" title="Copiar precio"><i class="fas fa-copy"></i></button></td>
                 `;
-                
-                tr.querySelectorAll('td').forEach(td => {
-                    td.addEventListener('click', function(e) {
+
+                tr.querySelectorAll('.cell-copy').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        const col = parseInt(this.dataset.col) || 0;
+                        copiarTexto(this.dataset.copy, 'Copiado: ' + this.dataset.copy);
+                    });
+                });
+
+                tr.querySelectorAll('td[data-col]').forEach(td => {
+                    td.addEventListener('click', function(e) {
+                        const col = parseInt(this.dataset.col) || 1;
                         seleccionarCelda(this, col);
                         copiarDesdeCelda(this);
                     });
-                    
+
                     td.addEventListener('dblclick', function(e) {
                         e.stopPropagation();
                         const tr = this.closest('tr');
-                        const texto = `${tr.dataset.codigo} | s/IVA: $${tr.dataset.precioSin} | c/IVA: $${tr.dataset.precioCon}`;
+                        const texto = `${tr.dataset.codigo} | s/IVA: $${tr.dataset.precioSin}`;
                         copiarTexto(texto, 'Repuesto copiado');
                     });
                 });
-                
+
                 tbody.appendChild(tr);
             });
-            
+
             const primeraFila = tbody.firstChild;
             if (primeraFila) {
-                const primeraCelda = primeraFila.querySelector('td[data-col="1"]') || primeraFila.querySelector('td');
-                if (primeraCelda) seleccionarCelda(primeraCelda, parseInt(primeraCelda.dataset.col) || 1);
+                const primeraCelda = primeraFila.querySelector('td[data-col="1"]') || primeraFila.querySelector('td[data-col]');
+                if (primeraCelda) seleccionarCelda(primeraCelda, 1);
             }
         }
 
         function seleccionarCelda(td, col) {
             if (celdaSeleccionada) celdaSeleccionada.classList.remove('cell-selected');
             if (filaSeleccionada) filaSeleccionada.classList.remove('row-selected');
-            
+
             td.classList.add('cell-selected');
             const tr = td.closest('tr');
             if (tr) {
@@ -699,41 +980,40 @@
         function copiarDesdeCelda(td) {
             const tr = td.closest('tr');
             if (!tr) return;
-            const col = parseInt(td.dataset.col) || 0;
+            const col = parseInt(td.dataset.col) || 1;
             let texto = '', mensaje = '';
-            
+
             switch(col) {
                 case 1: texto = tr.dataset.codigo; mensaje = 'Código: ' + texto; break;
                 case 2: texto = tr.dataset.descripcion || ''; mensaje = 'Descripción: ' + texto; break;
                 case 3: texto = tr.dataset.cantidad || '1'; mensaje = 'Cantidad: ' + texto; break;
                 case 4: texto = '$' + tr.dataset.precioSin; mensaje = 'Precio s/IVA: ' + texto; break;
-                case 5: texto = '$' + tr.dataset.precioCon; mensaje = 'Precio c/IVA: ' + texto; break;
                 default: texto = tr.dataset.codigo; mensaje = 'Código: ' + texto;
             }
             if (texto) copiarTexto(texto, mensaje);
         }
 
-        // ============ NAVEGACIÓN CON TECLADO ============
+        /* ============ NAVEGACIÓN CON TECLADO ============ */
         document.addEventListener('keydown', function(e) {
             const tbody = document.getElementById('repuestosBody');
             const filas = tbody.querySelectorAll('tr');
             if (filas.length === 0 || filas[0].querySelector('td[colspan]')) return;
-            
+
             let filaActual = null;
             let colActual = 0;
-            
+
             if (celdaSeleccionada) {
                 filaActual = celdaSeleccionada.closest('tr');
-                colActual = parseInt(celdaSeleccionada.dataset.col) || 0;
+                colActual = parseInt(celdaSeleccionada.dataset.col) || 1;
             } else {
                 filaActual = filas[0];
                 colActual = 1;
             }
-            
+
             let nuevaFila = filaActual;
             let nuevaCol = colActual;
             let movio = false;
-            
+
             switch(e.key) {
                 case 'ArrowDown':
                     e.preventDefault();
@@ -745,7 +1025,7 @@
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    if (colActual < 5) { nuevaCol = colActual + 1; movio = true; }
+                    if (colActual < 4) { nuevaCol = colActual + 1; movio = true; }
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
@@ -762,7 +1042,7 @@
                     }
                     return;
             }
-            
+
             if (movio) {
                 const celdas = nuevaFila.querySelectorAll('td');
                 let celdaEncontrada = null;
@@ -773,10 +1053,11 @@
                     celdaEncontrada = celdas[0];
                     if (celdaEncontrada.dataset.col === '0') celdaEncontrada = celdas[1] || celdas[0];
                 }
-                if (celdaEncontrada) seleccionarCelda(celdaEncontrada, parseInt(celdaEncontrada.dataset.col) || 0);
+                if (celdaEncontrada) seleccionarCelda(celdaEncontrada, parseInt(celdaEncontrada.dataset.col) || 1);
             }
         });
 
+        /* ===== RESUMEN ===== */
         function actualizarResumen(repuestos) {
             let totalSinIva = 0, totalConIva = 0;
             repuestos.forEach(rep => {
@@ -787,9 +1068,9 @@
             });
             document.getElementById('totalSinIva').textContent = '$' + totalSinIva.toFixed(2);
             document.getElementById('totalConIva').textContent = '$' + totalConIva.toFixed(2);
-            document.getElementById('totalIva').textContent = '$' + (totalConIva - totalSinIva).toFixed(2);
         }
 
+        /* ===== COPIAR TEXTO ===== */
         async function copiarTexto(texto, mensaje) {
             try {
                 await navigator.clipboard.writeText(texto);
@@ -809,25 +1090,23 @@
             const div = document.createElement('div');
             div.className = 'copy-tooltip';
             div.textContent = '✅ ' + mensaje;
-            div.style.top = '12px';
-            div.style.right = '18px';
             document.body.appendChild(div);
             setTimeout(() => {
                 div.style.opacity = '0';
                 div.style.transition = 'opacity 0.4s';
                 setTimeout(() => div.remove(), 400);
-            }, 1200);
+            }, 1400);
         }
 
+        /* ===== ACCIONES ===== */
         function limpiarDatos() {
             ['remitoDisplay','ordenDisplay','siniestroDisplay','modeloDisplay','patenteDisplay'].forEach(id => {
                 document.getElementById(id).textContent = '-';
             });
-            document.getElementById('repuestosBody').innerHTML = `<tr><td colspan="6" class="text-center text-secondary py-2" style="font-size:11px;"><i class="fas fa-file-pdf me-1"></i> Cargá un PDF</td></tr>`;
+            document.getElementById('repuestosBody').innerHTML = `<tr><td colspan="5" class="empty"><i class="fas fa-file-pdf"></i> Cargá un PDF para ver los repuestos</td></tr>`;
             document.getElementById('repuestosCount').textContent = '0';
             document.getElementById('totalSinIva').textContent = '$0.00';
             document.getElementById('totalConIva').textContent = '$0.00';
-            document.getElementById('totalIva').textContent = '$0.00';
             datosPdf = {};
             repuestosData = [];
             celdaSeleccionada = null;
@@ -844,13 +1123,13 @@
                 Swal.fire('Info', 'No hay repuestos', 'info');
                 return;
             }
-            let texto = 'CÓDIGO | CANT. | s/IVA | c/IVA\n' + '='.repeat(50) + '\n';
+            let texto = 'CÓDIGO | CANT. | s/IVA\n' + '='.repeat(50) + '\n';
             repuestosData.forEach(rep => {
-                texto += `${rep.codigo || ''} | ${rep.cantidad || '1'} | $${(rep.precio_sin_iva||0).toFixed(2)} | $${(rep.precio_con_iva||0).toFixed(2)}\n`;
+                texto += `${rep.codigo || ''} | ${rep.cantidad || '1'} | $${(rep.precio_sin_iva||0).toFixed(2)}\n`;
             });
             texto += '\n' + '='.repeat(50) + '\n';
             texto += `TOTAL s/IVA: ${document.getElementById('totalSinIva').textContent}  |  c/IVA: ${document.getElementById('totalConIva').textContent}\n`;
-            texto += `IVA: ${document.getElementById('totalIva').textContent}  |  Repuestos: ${repuestosData.length}`;
+            texto += `Repuestos: ${repuestosData.length}`;
             await copiarTexto(texto, 'Todo copiado');
         }
     </script>
