@@ -1,4 +1,4 @@
-# comparador.py
+# comparador.py - MEJORADO
 
 import time
 import re
@@ -46,14 +46,20 @@ class ComparadorRemitos:
                     "encontrado": "No detectado por OCR"
                 })
         
+        # Comparación de modelo mejorada
         modelo_pdf = datos_pdf.get("modelo", "").strip()
         modelo_ocr = datos_ocr.get("modelo", "").strip()
         if modelo_pdf and modelo_ocr:
+            # Normalizar ambos modelos: solo letras, números, espacios y /
             mp = re.sub(r'[^A-Z0-9\s/]', '', modelo_pdf.upper()).strip()
             mo = re.sub(r'[^A-Z0-9\s/]', '', modelo_ocr.upper()).strip()
+            # Eliminar espacios extra
             mp = re.sub(r'\s+', ' ', mp)
             mo = re.sub(r'\s+', ' ', mo)
-            if mp == mo or mp in mo or mo in mp:
+            # Comparar versión corta del modelo (primeros 30 caracteres máximo)
+            mp_corto = mp[:30]
+            mo_corto = mo[:30]
+            if mp == mo or mp in mo or mo in mp or mp_corto == mo_corto:
                 coincidencias += 1
             else:
                 errores.append({
@@ -70,6 +76,7 @@ class ComparadorRemitos:
                 "encontrado": "No detectado"
             })
         
+        # Comparación de repuestos
         pdf_repuestos = {self._norm(r.get("codigo", "")): r.get("codigo", "") for r in datos_pdf.get("repuestos", [])}
         ocr_repuestos = {self._norm(r.get("codigo", "")): r.get("codigo", "") for r in datos_ocr.get("repuestos", [])}
         

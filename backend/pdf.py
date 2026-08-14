@@ -1,5 +1,6 @@
-# backend/pdf.py - VERSIÓN CORREGIDA
 
+# backend/pdf.py - VERSIÓN CORREGIDA
+ 
 import pdfplumber
 import re
 from typing import Dict, List
@@ -7,7 +8,7 @@ try:
     from .parser_repuestos import parsear_repuestos
 except ImportError:
     from parser_repuestos import parsear_repuestos
-
+ 
 class LectorPDF:
     def __init__(self):
         self.pdf = None
@@ -83,7 +84,7 @@ class LectorPDF:
         if match:
             return match.group(0)
         return ""
-
+ 
     def _buscar_patente(self, texto: str) -> str:
         """Buscar patente (formato ABC123DE, ABC123, o con guiones)."""
         patrones = [
@@ -98,10 +99,22 @@ class LectorPDF:
         return ""
     
     def _buscar_modelo(self, texto: str) -> str:
-        """Buscar modelo"""
-        patron = r"MODELO\s*(.+?)(?=\n|$)"
+        """Buscar modelo del vehículo.
+        Corta en la primera de estas palabras clave que aparezca después del modelo,
+        que corresponden a campos que siguen en el documento."""
+        CORTE = (
+            r'CHASIS|CONTACTO|BUENOS\s+AIRES|LA\s+REJA|ROSARIO|CÓRDOBA|MENDOZA'
+            r'|PATENTE|SINIESTRO|ORDEN|REMITO|TOTAL|TIPO\s+Requerimiento'
+            r'|N[º°]?\s*PLACA|Tel\s*:|Mail\s*:'
+        )
+        patron = rf"MODELO\s*:?\s*(.+?)(?=\s+(?:{CORTE})|$)"
         match = re.search(patron, texto, re.IGNORECASE)
-        return match.group(1).strip() if match else ""
+        if not match:
+            return ""
+        modelo = match.group(1).strip()
+        # Limpieza extra: quitar dos puntos iniciales y espacios
+        modelo = re.sub(r'^[:\s]+', '', modelo).strip()
+        return modelo
     
     def _buscar_total(self, texto: str) -> str:
         """Buscar total"""

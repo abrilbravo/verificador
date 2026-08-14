@@ -109,11 +109,19 @@ class LectorOCR:
             if orden_match:
                 self.datos["orden"] = orden_match.group(1)
 
-        modelo_match = re.search(r'MODELO\s*[:]*\s*(.+?)(?:\n|$)', texto_upper, re.IGNORECASE)
+        CORTE = (
+            r'CHASIS|CONTACTO|BUENOS\s+AIRES|LA\s+REJA|ROSARIO|CÓRDOBA|MENDOZA'
+            r'|PATENTE|SINIESTRO|ORDEN|REMITO|TOTAL|TIPO\s+REQUERIMIENTO'
+            r'|N[º°]?\s*PLACA|TEL\s*:|MAIL\s*:'
+        )
+        modelo_match = re.search(
+            rf'MODELO\s*[:]*\s*(.+?)(?=\s+(?:{CORTE})|\n|$)',
+            texto_upper, re.IGNORECASE
+        )
         if modelo_match:
             modelo = modelo_match.group(1).strip()
-            modelo = re.sub(r'\s*(Perc|Desc|IVA|Descuento|I\.V\.A|Percepci|Perc\.).*', '', modelo, flags=re.IGNORECASE)
-            self.datos["modelo"] = modelo.strip()
+            modelo = re.sub(r'^[:\s]+', '', modelo).strip()
+            self.datos["modelo"] = modelo
         else:
             modelo_match = re.search(r'(VW\s+[A-Z0-9\s/]+)', texto_upper, re.IGNORECASE)
             if modelo_match:
