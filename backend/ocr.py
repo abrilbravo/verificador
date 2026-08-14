@@ -117,10 +117,13 @@ class LectorOCR:
             if orden_match:
                 self.datos["orden"] = orden_match.group(1)
 
-        modelo_match = re.search(r'MODELO\s*[:]*\s*(.+?)(?:\s+CHASIS|\s+PATENTE|\s+CONTACTO|\s+Nº|\s+TIPO|\s+Requerimiento|\s+RD\s+\d+|\n|$)', texto_upper, re.IGNORECASE)
+        modelo_match = re.search(r'MODELO\s*[:]*\s*(VW\s+[A-Z0-9\s/.]+(?:HP|CC|L|TDI|TSI|MT|AT|DC|SC|CD|4X2|4X4|16V|8V|PK|S|S\/C|HIG)[A-Z0-9\s]*)', texto_upper, re.IGNORECASE)
+        if not modelo_match:
+            modelo_match = re.search(r'MODELO\s*[:]*\s*(VW\s+\S+(?:\s+\S+){0,8})', texto_upper, re.IGNORECASE)
         if modelo_match:
             modelo = modelo_match.group(1).strip()
-            modelo = re.sub(r'\s*(Perc|Desc|IVA|Descuento|I\.V\.A|Percepci|Perc\.).*', '', modelo, flags=re.IGNORECASE)
+            modelo = re.sub(r'\s*(CHASIS|PATENTE|CONTACTO|Nº|TIPO|Requerimiento|RD\s+\d+|BUENOS|LA\s+REJA|Perc|Desc|IVA).*', '', modelo, flags=re.IGNORECASE)
+            modelo = re.sub(r'\s+$', '', modelo)
             self.datos["modelo"] = modelo.strip()
         else:
             modelo_match = re.search(r'(VW\s+[A-Z0-9\s/]+)', texto_upper, re.IGNORECASE)
