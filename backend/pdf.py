@@ -1,6 +1,5 @@
-
 # backend/pdf.py - VERSIÓN CORREGIDA
- 
+
 import pdfplumber
 import re
 from typing import Dict, List
@@ -8,7 +7,7 @@ try:
     from .parser_repuestos import parsear_repuestos
 except ImportError:
     from parser_repuestos import parsear_repuestos
- 
+
 class LectorPDF:
     def __init__(self):
         self.pdf = None
@@ -48,7 +47,7 @@ class LectorPDF:
             'orden': self._buscar_orden(texto),
             'siniestro': self._buscar_siniestro(texto),
             'patente': self._buscar_patente(texto),
-            'modelo': self._buscar_modelo(texto),
+            'modelo': self._buscar_modelo(self.texto_completo),  # usar texto raw con saltos de línea
             'total': self._buscar_total(texto),
             'repuestos': []
         }
@@ -84,7 +83,7 @@ class LectorPDF:
         if match:
             return match.group(0)
         return ""
- 
+
     def _buscar_patente(self, texto: str) -> str:
         """Buscar patente (formato ABC123DE, ABC123, o con guiones)."""
         patrones = [
@@ -100,20 +99,13 @@ class LectorPDF:
     
     def _buscar_modelo(self, texto: str) -> str:
         """Buscar modelo del vehículo.
-        Corta en la primera de estas palabras clave que aparezca después del modelo,
-        que corresponden a campos que siguen en el documento."""
-        CORTE = (
-            r'CHASIS|CONTACTO|BUENOS\s+AIRES|LA\s+REJA|ROSARIO|CÓRDOBA|MENDOZA'
-            r'|PATENTE|SINIESTRO|ORDEN|REMITO|TOTAL|TIPO\s+Requerimiento'
-            r'|N[º°]?\s*PLACA|Tel\s*:|Mail\s*:'
-        )
-        patron = rf"MODELO\s*:?\s*(.+?)(?=\s+(?:{CORTE})|$)"
+        Usa el texto con saltos de línea para cortar exactamente al final de la línea
+        donde está MODELO, antes de CHASIS u otro campo."""
+        patron = r"MODELO\s*:?\s*(.+?)(?=\s*\n|\s+CHASIS\b|$)"
         match = re.search(patron, texto, re.IGNORECASE)
         if not match:
             return ""
-        modelo = match.group(1).strip()
-        # Limpieza extra: quitar dos puntos iniciales y espacios
-        modelo = re.sub(r'^[:\s]+', '', modelo).strip()
+        modelo = re.sub(r'^[:\s]+', '', match.group(1)).strip()
         return modelo
     
     def _buscar_total(self, texto: str) -> str:
