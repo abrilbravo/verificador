@@ -26,8 +26,8 @@ import re
 
 IVA = 0.21
 
-PATRON_CODIGO = re.compile(r'[A-Z0-9]{9,}')
-PATRON_CODIGO_DIGITO = re.compile(r'[0-9][A-Z0-9]{8,}')
+PATRON_CODIGO = re.compile(r'[A-Za-z0-9]{9,}')
+PATRON_CODIGO_DIGITO = re.compile(r'[0-9][A-Za-z0-9]{8,}')
 _PATRON_CAMPO = r'(?:PRECIO|NOMBRE(?:\s+DE\s+PIEZA)?|CANT\w*|IMP\w*|TOTAL|CONFORME|Fecha\s*\S*)'
 
 
@@ -64,7 +64,7 @@ def formatear_codigo(codigo):
     desde el final, regla xxx-xxx-xxx-xx-xxx).
     Ej: '3C8853856F' -> '3C8-853-856-F', '5U08536651NN' -> '5U0-853-665-1NN',
         '2H6823033DXGRU' -> '2H6-823-033-DX-GRU'."""
-    codigo = re.sub(r'[^A-Z0-9]', '', str(codigo).upper())
+    codigo = re.sub(r'[^A-Za-z0-9]', '', str(codigo))
     if len(codigo) <= 3:
         return codigo
     if len(codigo) <= 9:
@@ -72,7 +72,10 @@ def formatear_codigo(codigo):
     base = codigo[:9]
     resto = codigo[9:]
     if len(resto) <= 3:
-        return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{resto}"
+        if resto:
+            return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{resto}"
+        else:
+            return f"{base[:3]}-{base[3:6]}-{base[6:9]}"
     inicio = len(resto) % 3
     if inicio == 0:
         grupos = [resto[i:i + 3] for i in range(0, len(resto), 3)]
@@ -81,14 +84,23 @@ def formatear_codigo(codigo):
     return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{'-'.join(grupos)}"
 
 
+def formatear_codigo_con_sufijo(codigo, sufijo):
+    """Formatea código y agrega sufijo con formato correcto.
+    Ej: ('5U0853677', '1NN') -> '5U0-853-677- -1NN'
+        ('3C8853677G', '041') -> '3C8-853-677-G -041'"""
+    cod_limpio = re.sub(r'[^A-Za-z0-9]', '', str(codigo))
+    fmt = formatear_codigo(cod_limpio)
+    return f"{fmt} -{sufijo}"
+
+
 def _extraer_sufijo(resto):
     """Busca un sufijo corto (1-4 caracteres) al inicio de 'resto',
     siempre que detrás no queden más alfanuméricos pegados."""
-    m = re.match(r'[^A-Z0-9]*([A-Z0-9]{1,4})(?:[^A-Z0-9]|$)', resto)
+    m = re.match(r'[^A-Za-z0-9]*([A-Za-z0-9]{1,4})(?:[^A-Za-z0-9]|$)', resto)
     if not m:
         return None
     token = m.group(1)
-    if re.search(r'[A-Z0-9]', resto[m.end():]):
+    if re.search(r'[A-Za-z0-9]', resto[m.end():]):
         return None
     return token
 
@@ -96,16 +108,16 @@ def _extraer_sufijo(resto):
 def extraer_codigos(texto, patron=PATRON_CODIGO_DIGITO):
     """Extrae todos los códigos de repuesto presentes en un texto.
     Si después del código hay un sufijo corto separado por espacio (GRU, 9B9,
-    041, 1NN, F, ...), lo agrega como '- -SUFIJO' (los espacios también cuentan).
+    041, 1NN, F, ...), lo agrega como ' -SUFIJO' (los espacios también cuentan).
     Devuelve lista ya formateada."""
     resultado = []
-    texto = _limpiar_texto_rep(texto).upper()
-    for m in re.finditer(patron, texto):
+    texto_limpio = _limpiar_texto_rep(texto)
+    for m in re.finditer(patron, texto_limpio):
         codigo = m.group(0)
-        resto = texto[m.end():]
+        resto = texto_limpio[m.end():]
         sufijo = _extraer_sufijo(resto)
         if sufijo:
-            resultado.append(f"{formatear_codigo(codigo)}- -{sufijo}")
+            resultado.append(f"{formatear_codigo(codigo)} -{sufijo}")
         else:
             resultado.append(formatear_codigo(codigo))
     return resultado

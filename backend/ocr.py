@@ -120,6 +120,7 @@ class LectorOCR:
         modelo_match = re.search(r'MODELO\s*[:]*\s*(.+?)(?:\n|$)', texto_upper, re.IGNORECASE)
         if modelo_match:
             modelo = modelo_match.group(1).strip()
+            modelo = re.sub(r'\s*(CHASIS|PATENTE|CONTACTO|Nº\s*PLACA|TIPO|Requerimiento|RD\s+\d+|BUENOS\s+AIRES|LA\s+REJA).*', '', modelo, flags=re.IGNORECASE)
             modelo = re.sub(r'\s*(Perc|Desc|IVA|Descuento|I\.V\.A|Percepci|Perc\.).*', '', modelo, flags=re.IGNORECASE)
             self.datos["modelo"] = modelo.strip()
         else:
@@ -135,7 +136,7 @@ class LectorOCR:
         if siniestro_match:
             self.datos["siniestro"] = siniestro_match.group(1).strip('-')
 
-        remito_match = re.search(r'REMITO\s*[:]*\s*([0-9\s]+)', texto_upper, re.IGNORECASE)
+        remito_match = re.search(r'REMITO\s*[:]*\s*([0-9]+)', texto_upper, re.IGNORECASE)
         if remito_match:
             self.datos["remito"] = remito_match.group(1).replace(" ", "")
 
