@@ -117,10 +117,9 @@ class LectorOCR:
             if orden_match:
                 self.datos["orden"] = orden_match.group(1)
 
-        modelo_match = re.search(r'MODELO\s*[:]*\s*(.+?)(?:\n|$)', texto_upper, re.IGNORECASE)
+        modelo_match = re.search(r'MODELO\s*[:]*\s*(.+?)(?:\s+CHASIS|\s+PATENTE|\s+CONTACTO|\s+Nº|\s+TIPO|\s+Requerimiento|\s+RD\s+\d+|\n|$)', texto_upper, re.IGNORECASE)
         if modelo_match:
             modelo = modelo_match.group(1).strip()
-            modelo = re.sub(r'\s*(CHASIS|PATENTE|CONTACTO|Nº\s*PLACA|TIPO|Requerimiento|RD\s+\d+|BUENOS\s+AIRES|LA\s+REJA).*', '', modelo, flags=re.IGNORECASE)
             modelo = re.sub(r'\s*(Perc|Desc|IVA|Descuento|I\.V\.A|Percepci|Perc\.).*', '', modelo, flags=re.IGNORECASE)
             self.datos["modelo"] = modelo.strip()
         else:
