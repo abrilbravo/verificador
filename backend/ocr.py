@@ -26,7 +26,7 @@ except ImportError:
     )
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 PROMPT = """Analizá esta imagen de un remito o captura de pantalla del sistema ADTR de Federación Patronal Seguros.
 Extraé los siguientes datos y devolvé SOLO un JSON válido, sin explicaciones ni markdown:
@@ -87,11 +87,14 @@ class LectorOCR:
 
             data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
-                GEMINI_URL,
-                data=data,
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
+    GEMINI_URL,
+    data=data,
+    headers={
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY
+    },
+    method="POST"
+)
 
             with urllib.request.urlopen(req, timeout=30) as resp:
                 respuesta = json.loads(resp.read().decode("utf-8"))
