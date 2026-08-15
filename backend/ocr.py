@@ -1,9 +1,10 @@
-# ocr.py - Versión con RapidOCR (no necesita Tesseract)
+# ocr.py - Versión con OCR.space API (gratis, sin modelos locales)
 
 import re
-from rapidocr import RapidOCR
-import sys
 import os
+import base64
+import requests
+import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import PDF_CONFIG
 try:
@@ -21,6 +22,9 @@ except ImportError:
         PATRON_CODIGO_DIGITO,
     )
 
+OCRSPACE_API_KEY = os.environ.get('OCRSPACE_API_KEY', 'K85580641388957')
+
+
 class LectorOCR:
     def __init__(self):
         self.texto = ""
@@ -34,49 +38,44 @@ class LectorOCR:
             "remito": "",
             "repuestos": []
         }
-        self.engine = RapidOCR()
 
     def abrir_imagen(self, ruta_imagen):
         try:
-            resultado = self.engine(ruta_imagen)
+            with open(ruta_imagen, "rb") as f:
+                contenido = f.read()
 
-            if resultado is None or resultado.boxes is None:
+            imagen_b64 = base64.b64encode(contenido).decode('utf-8')
+
+            response = requests.post(
+                'https://api.ocr.space/parse/image',
+                data={
+                    'base64Image': f'data:image/jpeg;base64,{imagen_b64}',
+                    'apikey': OCRSPACE_API_KEY,
+                    'language': 'spa',
+                    'isOverlayRequired': 'false'
+                },
+                timeout=30
+            )
+
+            resultado = response.json()
+
+            if not resultado.get('ParsedResults'):
                 self.texto = ""
                 self.lineas = []
                 return False
 
-            lineas_dict = {}
-            for box, texto, score in zip(resultado.boxes, resultado.txts, resultado.scores):
-                if not texto or not texto.strip():
-                    continue
-                y = round((box[0][1] + box[2][1]) / 2, 1)
-                x = box[0][0]
-                texto_limpio = texto.strip()
+            texto_completo = resultado['ParsedResults'][0]['ParsedText']
 
-                encontro = False
-                for y_existente in lineas_dict:
-                    if abs(y - y_existente) < 8:
-                        lineas_dict[y_existente].append((x, texto_limpio))
-                        encontro = True
-                        break
-                if not encontro:
-                    lineas_dict[y] = [(x, texto_limpio)]
+            self.lineas = [l for l in texto_completo.split("\n") if l.strip()]
+            self.texto = texto_completo
 
-            lineas_ordenadas = []
-            for y in sorted(lineas_dict.keys()):
-                partes = sorted(lineas_dict[y], key=lambda p: p[0])
-                texto_linea = " ".join([p[1] for p in partes])
-                lineas_ordenadas.append(texto_linea)
-
-            self.lineas = lineas_ordenadas
-            self.texto = "\n".join(lineas_ordenadas)
             print("=== TEXTO OCR ===")
             print(self.texto)
             print("=================")
             return True
 
         except Exception as e:
-            print(f"Error al procesar imagen: {e}")
+            print(f"Error al procesar imagen con OCR.space: {e}")
             return False
 
     def _normalizar_patente(self, texto):
