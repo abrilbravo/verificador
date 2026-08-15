@@ -1,9 +1,7 @@
-# ocr.py - Versión con OCR.space API (gratis, sin modelos locales)
+# ocr.py - OCR en el navegador (Tesseract.js) + parsing en backend
 
 import re
 import os
-import base64
-import requests
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import PDF_CONFIG
@@ -22,9 +20,6 @@ except ImportError:
         PATRON_CODIGO_DIGITO,
     )
 
-OCRSPACE_API_KEY = os.environ.get('OCRSPACE_API_KEY', 'K85580641388957')
-
-
 class LectorOCR:
     def __init__(self):
         self.texto = ""
@@ -39,56 +34,13 @@ class LectorOCR:
             "repuestos": []
         }
 
-    def abrir_imagen(self, ruta_imagen):
-        try:
-            with open(ruta_imagen, "rb") as f:
-                contenido = f.read()
-
-            ext = os.path.splitext(ruta_imagen)[1].lower()
-            mime = 'image/png' if ext == '.png' else 'image/jpeg'
-            imagen_b64 = base64.b64encode(contenido).decode('utf-8')
-
-            response = requests.post(
-                'https://api.ocr.space/parse/image',
-                data={
-                    'base64Image': f'data:{mime};base64,{imagen_b64}',
-                    'apikey': OCRSPACE_API_KEY,
-                    'language': 'spa',
-                    'isOverlayRequired': 'false',
-                    'scale': 'true',
-                    'OCREngine': '1',
-                    'table': 'true'
-                },
-                timeout=60
-            )
-
-            resultado = response.json()
-
-            print("=== OCR.space RESPONSE ===")
-            print(resultado)
-            print("==========================")
-
-            if resultado.get('ErrorMessage'):
-                print(f"OCR.space error: {resultado['ErrorMessage']}")
-
-            if not resultado.get('ParsedResults'):
-                self.texto = ""
-                self.lineas = []
-                return False
-
-            texto_completo = resultado['ParsedResults'][0]['ParsedText']
-
-            self.lineas = [l for l in texto_completo.split("\n") if l.strip()]
-            self.texto = texto_completo
-
-            print("=== TEXTO OCR ===")
-            print(self.texto)
-            print("=================")
-            return True
-
-        except Exception as e:
-            print(f"Error al procesar imagen con OCR.space: {e}")
-            return False
+    def recibir_texto(self, texto):
+        self.texto = texto
+        self.lineas = [l for l in texto.split("\n") if l.strip()]
+        print("=== TEXTO OCR (del frontend) ===")
+        print(self.texto)
+        print("=================")
+        return True
 
     def _normalizar_patente(self, texto):
         t = texto.upper().strip()

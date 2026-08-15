@@ -95,22 +95,16 @@ def cargar_pdf():
 @app.route('/api/cargar_imagen', methods=['POST'])
 def cargar_imagen():
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No se envió archivo'}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'Archivo vacío'}), 400
-        
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(temp_path)
-        
+        data = request.json
+        texto_ocr = data.get('texto', '')
+
+        if not texto_ocr:
+            return jsonify({'error': 'No se recibió texto OCR'}), 400
+
         lector = LectorOCR()
-        lector.abrir_imagen(temp_path)
+        lector.recibir_texto(texto_ocr)
         datos = lector.extraer_datos()
-        
-        os.remove(temp_path)
-        
+
         return jsonify({
             'success': True,
             'datos': datos,
