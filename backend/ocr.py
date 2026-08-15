@@ -44,20 +44,31 @@ class LectorOCR:
             with open(ruta_imagen, "rb") as f:
                 contenido = f.read()
 
+            ext = os.path.splitext(ruta_imagen)[1].lower()
+            mime = 'image/png' if ext == '.png' else 'image/jpeg'
             imagen_b64 = base64.b64encode(contenido).decode('utf-8')
 
             response = requests.post(
                 'https://api.ocr.space/parse/image',
                 data={
-                    'base64Image': f'data:image/jpeg;base64,{imagen_b64}',
+                    'base64Image': f'data:{mime};base64,{imagen_b64}',
                     'apikey': OCRSPACE_API_KEY,
                     'language': 'spa',
-                    'isOverlayRequired': 'false'
+                    'isOverlayRequired': 'false',
+                    'scale': 'true',
+                    'OCREngine': '2'
                 },
-                timeout=30
+                timeout=60
             )
 
             resultado = response.json()
+
+            print("=== OCR.space RESPONSE ===")
+            print(resultado)
+            print("==========================")
+
+            if resultado.get('ErrorMessage'):
+                print(f"OCR.space error: {resultado['ErrorMessage']}")
 
             if not resultado.get('ParsedResults'):
                 self.texto = ""
