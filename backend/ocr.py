@@ -87,14 +87,14 @@ class LectorOCR:
 
             data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
-    GEMINI_URL,
-    data=data,
-    headers={
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY
-    },
-    method="POST"
-)
+                GEMINI_URL,
+                data=data,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY
+                },
+                method="POST"
+            )
 
             with urllib.request.urlopen(req, timeout=30) as resp:
                 respuesta = json.loads(resp.read().decode("utf-8"))
@@ -142,6 +142,10 @@ class LectorOCR:
                 print(f"  {rep['codigo']}")
             return True
 
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode("utf-8")
+            print(f"Error Gemini HTTP {e.code}: {error_body}")
+            return False
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -149,7 +153,6 @@ class LectorOCR:
             return False
 
     def recibir_texto(self, texto):
-        """Compatibilidad con versión anterior - no usado con Gemini"""
         self.texto = texto
         self.lineas = [l for l in texto.split("\n") if l.strip()]
         return True
