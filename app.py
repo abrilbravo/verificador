@@ -95,15 +95,24 @@ def cargar_pdf():
 @app.route('/api/cargar_imagen', methods=['POST'])
 def cargar_imagen():
     try:
-        data = request.json
-        texto_ocr = data.get('texto', '')
-
-        if not texto_ocr:
-            return jsonify({'error': 'No se recibió texto OCR'}), 400
-
+        if 'file' not in request.files:
+            return jsonify({'error': 'No se envió archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'Archivo vacío'}), 400
+        
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(temp_path)
+        
         lector = LectorOCR()
-        lector.recibir_texto(texto_ocr)
+        ok = lector.abrir_imagen(temp_path)
         datos = lector.extraer_datos()
+        
+        os.remove(temp_path)
+        
+        if not ok:
+            return jsonify({'error': 'No se pudo procesar la imagen con Gemini'}), 500
 
         return jsonify({
             'success': True,

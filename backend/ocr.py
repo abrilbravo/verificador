@@ -1,10 +1,15 @@
-# ocr.py - OCR en el navegador (Tesseract.js) + parsing en backend
+# backend/ocr.py - Versión con Google Gemini Flash (gratis)
 
 import re
 import os
 import sys
+import base64
+import json
+import urllib.request
+import urllib.error
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import PDF_CONFIG
+
 try:
     from .parser_repuestos import (
         parsear_repuestos,
@@ -20,6 +25,31 @@ except ImportError:
         PATRON_CODIGO_DIGITO,
     )
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+PROMPT = """Analizá esta imagen de un remito o captura de pantalla del sistema ADTR de Federación Patronal Seguros.
+Extraé los siguientes datos y devolvé SOLO un JSON válido, sin explicaciones ni markdown:
+
+{
+  "patente": "patente del vehículo (formato ABC123 o AB123CD)",
+  "orden": "número de orden",
+  "siniestro": "número de siniestro (formato 103-4-46654)",
+  "modelo": "modelo del vehículo (solo marca y modelo, ej: VW FOX 1.6 TRENDLINE)",
+  "remito": "número de remito si aparece",
+  "repuestos": [
+    {"codigo": "código del repuesto", "descripcion": "descripción", "precio": "precio numérico"}
+  ]
+}
+
+Reglas importantes:
+- Los códigos de repuestos tienen formato como: 5U0853677, 3C8853856F, 2H6823033D, SU0853653F, etc.
+- Si hay sufijo separado por espacio (ej: 5U0853677 1NN), incluilos juntos como: 5U0-853-677- -1NN
+- Si no encontrás algún campo, dejalo como string vacío
+- Los repuestos son la lista de piezas con sus códigos
+- Devolvé SOLO el JSON, sin ```json ni nada extra"""
+
+
 class LectorOCR:
     def __init__(self):
         self.texto = ""
@@ -34,137 +64,92 @@ class LectorOCR:
             "repuestos": []
         }
 
-    def recibir_texto(self, texto):
-        self.texto = texto
-        self.lineas = [l for l in texto.split("\n") if l.strip()]
-        print("=== TEXTO OCR (del frontend) ===")
-        print(self.texto)
-        print("=================")
-        return True
+    def abrir_imagen(self, ruta_imagen):
+        try:
+            with open(ruta_imagen, "rb") as f:
+                imagen_bytes = f.read()
 
-    def _normalizar_patente(self, texto):
-        t = texto.upper().strip()
-        t = t.replace("O", "D").replace("Q", "D")
-        if re.match(r'^[A-Z]{2}[0-9]{3}[A-Z]{2}$', t):
-            return t
-        return None
+            imagen_b64 = base64.b64encode(imagen_bytes).decode("utf-8")
 
-    def extraer_datos(self):
-        if not self.texto:
-            return self.datos
+            ext = ruta_imagen.lower().split(".")[-1]
+            mime_types = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+            mime_type = mime_types.get(ext, "image/jpeg")
 
-        texto_upper = self.texto.upper()
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": PROMPT},
+                        {"inline_data": {"mime_type": mime_type, "data": imagen_b64}}
+                    ]
+                }],
+                "generationConfig": {"temperature": 0}
+            }
 
-        patente_match = re.search(r'[A-Z]{2}[0-9]{3}[A-Z]{2}', texto_upper)
-        if patente_match:
-            patente_raw = patente_match.group(0)
-            patente_corregida = self._normalizar_patente(patente_raw)
-            if patente_corregida:
-                self.datos["patente"] = patente_corregida
-            else:
-                self.datos["patente"] = patente_raw
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                GEMINI_URL,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
 
-        orden_match = re.search(r'ORDEN\s*[:]*\s*([0-9\-]+)', texto_upper, re.IGNORECASE)
-        if orden_match:
-            self.datos["orden"] = orden_match.group(1)
-        else:
-            orden_match = re.search(r'([0-9]{3,4}[-][0-9]{3,5})', texto_upper)
-            if orden_match:
-                self.datos["orden"] = orden_match.group(1)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                respuesta = json.loads(resp.read().decode("utf-8"))
 
-        CORTE = (
-            r'CHASIS|CONTACTO|BUENOS\s+AIRES|LA\s+REJA|ROSARIO|CÓRDOBA|MENDOZA'
-            r'|PATENTE|SINIESTRO|ORDEN|REMITO|TOTAL|TIPO\s+REQUERIMIENTO'
-            r'|N[º°]?\s*PLACA|TEL\s*:|MAIL\s*:'
-        )
-        modelo_match = re.search(
-            rf'MODELO\s*[:]*\s*(.+?)(?=\s+(?:{CORTE})|\n|$)',
-            texto_upper, re.IGNORECASE
-        )
-        if modelo_match:
-            modelo = modelo_match.group(1).strip()
-            modelo = re.sub(r'^[:\s]+', '', modelo).strip()
-            self.datos["modelo"] = modelo
-        else:
-            modelo_match = re.search(r'(VW\s+[A-Z0-9\s/]+)', texto_upper, re.IGNORECASE)
-            if modelo_match:
-                self.datos["modelo"] = modelo_match.group(1).strip()
+            texto = respuesta["candidates"][0]["content"]["parts"][0]["text"].strip()
+            texto = re.sub(r"^```json\s*", "", texto)
+            texto = re.sub(r"\s*```$", "", texto)
 
-        siniestro_match = re.search(r'SINIESTRO\s*[:]*\s*N[º°]?\.?\s*:?\s*([0-9][0-9\-]*)', texto_upper, re.IGNORECASE)
-        if not siniestro_match:
-            siniestro_match = re.search(r'SINIESTRO\s*[:]*\s*([0-9][0-9\-]*)', texto_upper, re.IGNORECASE)
-        if not siniestro_match:
-            siniestro_match = re.search(r'([0-9]{3}[-][0-9][-][0-9]{6})', texto_upper)
-        if siniestro_match:
-            self.datos["siniestro"] = siniestro_match.group(1).strip('-')
+            resultado = json.loads(texto)
 
-        remito_match = re.search(r'REMITO\s*[:]*\s*([0-9\s]+)', texto_upper, re.IGNORECASE)
-        if remito_match:
-            self.datos["remito"] = remito_match.group(1).replace(" ", "")
+            self.datos["patente"] = resultado.get("patente", "").strip()
+            self.datos["orden"] = resultado.get("orden", "").strip()
+            self.datos["siniestro"] = resultado.get("siniestro", "").strip()
+            self.datos["modelo"] = resultado.get("modelo", "").strip()
+            self.datos["remito"] = resultado.get("remito", "").strip()
 
-        self._extraer_repuestos()
-
-        return self.datos
-
-    def _extraer_repuestos(self):
-        repuestos = []
-        vistos = set()
-
-        siniestro = self.datos.get("siniestro", "").replace("-", "")
-        orden = self.datos.get("orden", "").replace("-", "")
-        patente = self.datos.get("patente", "").replace("-", "")
-
-        def es_codigo_valido(clave):
-            if not clave:
-                return False
-            if clave == siniestro or clave == patente:
-                return False
-            if clave.startswith(orden) and len(clave) <= len(orden) + 3:
-                return False
-            if clave.isdigit() and len(clave) in (10, 11):
-                return False
-            return True
-
-        def agregar(codigo, descripcion="", nombre="", precio="0"):
-            clave = re.sub(r'[^A-Z0-9]', '', codigo.upper())
-            if clave and clave not in vistos and es_codigo_valido(clave):
+            repuestos_raw = resultado.get("repuestos", [])
+            repuestos = []
+            vistos = set()
+            for r in repuestos_raw:
+                codigo = str(r.get("codigo", "")).strip()
+                if not codigo:
+                    continue
+                clave = re.sub(r"[^A-Z0-9]", "", codigo.upper())
+                if clave in vistos:
+                    continue
                 vistos.add(clave)
                 try:
-                    precio_num = float(precio)
+                    precio_num = float(str(r.get("precio", "0")).replace(",", ".").replace(" ", ""))
                 except:
                     precio_num = 0.0
                 repuestos.append({
                     "codigo": codigo,
-                    "descripcion": descripcion,
-                    "nombre": nombre,
+                    "descripcion": str(r.get("descripcion", "")),
+                    "nombre": str(r.get("descripcion", "")),
                     "cantidad": "1.00",
-                    "precio": precio,
+                    "precio": str(precio_num),
                     "precio_num": precio_num,
                     "precio_sin_iva": round(precio_num / 1.21, 2)
                 })
 
-        # 1) Bloques 'Inspec: ... Rep: ...' con PRECIO y NOMBRE DE PIEZA
-        for repuesto in parsear_repuestos(self.texto):
-            agregar(
-                repuesto.get("codigo", ""),
-                repuesto.get("descripcion", ""),
-                repuesto.get("nombre", ""),
-                repuesto.get("precio", "0"),
-            )
+            self.datos["repuestos"] = repuestos
+            print(f"=== GEMINI OCR: {len(repuestos)} repuestos ===")
+            for rep in repuestos:
+                print(f"  {rep['codigo']}")
+            return True
 
-        # 2) Fallback: códigos sueltos en otras líneas (solo códigos que empiezan con dígito)
-        for linea in self.lineas:
-            if re.search(r'Inspec\s*:', linea, re.IGNORECASE):
-                continue
-            codigos_en_linea = extraer_codigos(linea, patron=PATRON_CODIGO_DIGITO)
-            if codigos_en_linea:
-                print(f"  Linea: {linea}")
-                print(f"  Codigos encontrados: {codigos_en_linea}")
-            for codigo in codigos_en_linea:
-                agregar(codigo)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error Gemini OCR: {e}")
+            return False
 
-        print(f"=== REPUESTOS OCR: {len(repuestos)} ===")
-        for r in repuestos:
-            print(f"  {r['codigo']}")
-        print("========================")
-        self.datos["repuestos"] = repuestos
+    def recibir_texto(self, texto):
+        """Compatibilidad con versión anterior - no usado con Gemini"""
+        self.texto = texto
+        self.lineas = [l for l in texto.split("\n") if l.strip()]
+        return True
+
+    def extraer_datos(self):
+        return self.datos
