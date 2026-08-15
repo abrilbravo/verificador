@@ -203,7 +203,15 @@ class LectorOCR:
         for linea in self.lineas:
             if re.search(r'Inspec\s*:', linea, re.IGNORECASE):
                 continue
-            for codigo in extraer_codigos(linea, patron=PATRON_CODIGO_DIGITO):
+            codigos_en_linea = extraer_codigos(linea, patron=PATRON_CODIGO_DIGITO)
+            if codigos_en_linea:
+                print(f"  Linea: {linea}")
+                print(f"  Codigos encontrados: {codigos_en_linea}")
+            for codigo in codigos_en_linea:
                 agregar(codigo)
 
+        print(f"=== REPUESTOS OCR: {len(repuestos)} ===")
+        for r in repuestos:
+            print(f"  {r['codigo']}")
+        print("========================")
         self.datos["repuestos"] = repuestos
