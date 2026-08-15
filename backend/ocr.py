@@ -56,7 +56,8 @@ class LectorOCR:
                     'language': 'spa',
                     'isOverlayRequired': 'false',
                     'scale': 'true',
-                    'OCREngine': '2'
+                    'OCREngine': '1',
+                    'table': 'true'
                 },
                 timeout=60
             )
