@@ -1,12 +1,10 @@
-# backend/ocr.py - Versión con Google Gemini Flash (gratis)
+# backend/ocr.py - Versión con Groq (gratis y funciona)
 
 import re
 import os
 import sys
-import base64
 import json
-import urllib.request
-import urllib.error
+import requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,8 +23,9 @@ except ImportError:
         PATRON_CODIGO_DIGITO,
     )
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+# Configuración de Groq
+from config import GROQ_API_KEY
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 PROMPT = """Analizá esta imagen de un remito o captura de pantalla del sistema ADTR de Federación Patronal Seguros.
 Extraé los siguientes datos y devolvé SOLO un JSON válido, sin explicaciones ni markdown:
@@ -49,7 +48,6 @@ Reglas importantes:
 - Los repuestos son la lista de piezas con sus códigos
 - Devolvé SOLO el JSON, sin ```json ni nada extra"""
 
-
 class LectorOCR:
     def __init__(self):
         self.texto = ""
@@ -66,45 +64,56 @@ class LectorOCR:
 
     def abrir_imagen(self, ruta_imagen):
         try:
+            # Leer y codificar la imagen en base64
+            import base64
             with open(ruta_imagen, "rb") as f:
                 imagen_bytes = f.read()
-
             imagen_b64 = base64.b64encode(imagen_bytes).decode("utf-8")
 
+            # Determinar el tipo MIME
             ext = ruta_imagen.lower().split(".")[-1]
             mime_types = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
             mime_type = mime_types.get(ext, "image/jpeg")
 
+            # Preparar el payload para Groq
             payload = {
-                "contents": [{
-                    "parts": [
-                        {"text": PROMPT},
-                        {"inline_data": {"mime_type": mime_type, "data": imagen_b64}}
-                    ]
-                }],
-                "generationConfig": {"temperature": 0}
+                "model": "llama-3.2-90b-vision-preview",  # Modelo con visión de Groq
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": PROMPT},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{imagen_b64}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "temperature": 0,
+                "max_tokens": 4096
             }
 
-            data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(
-                GEMINI_URL,
-                data=data,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": GEMINI_API_KEY
-                },
-                method="POST"
-            )
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            }
 
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                respuesta = json.loads(resp.read().decode("utf-8"))
+            # Hacer la llamada a Groq
+            response = requests.post(GROQ_URL, json=payload, headers=headers, timeout=30)
+            response.raise_for_status()
+            respuesta = response.json()
 
-            texto = respuesta["candidates"][0]["content"]["parts"][0]["text"].strip()
+            # Extraer el texto de la respuesta
+            texto = respuesta["choices"][0]["message"]["content"].strip()
             texto = re.sub(r"^```json\s*", "", texto)
             texto = re.sub(r"\s*```$", "", texto)
 
             resultado = json.loads(texto)
 
+            # Procesar los datos extraídos
             self.datos["patente"] = resultado.get("patente", "").strip()
             self.datos["orden"] = resultado.get("orden", "").strip()
             self.datos["siniestro"] = resultado.get("siniestro", "").strip()
@@ -137,19 +146,20 @@ class LectorOCR:
                 })
 
             self.datos["repuestos"] = repuestos
-            print(f"=== GEMINI OCR: {len(repuestos)} repuestos ===")
+            print(f"=== GROQ OCR: {len(repuestos)} repuestos ===")
             for rep in repuestos:
                 print(f"  {rep['codigo']}")
             return True
 
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode("utf-8")
-            print(f"Error Gemini HTTP {e.code}: {error_body}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error Groq: {e}")
+            if hasattr(e, 'response') and e.response:
+                print(f"Detalles: {e.response.text}")
             return False
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"Error Gemini OCR: {e}")
+            print(f"Error OCR con Groq: {e}")
             return False
 
     def recibir_texto(self, texto):
