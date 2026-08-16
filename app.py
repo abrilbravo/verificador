@@ -112,7 +112,7 @@ def cargar_imagen():
         os.remove(temp_path)
         
         if not ok:
-            return jsonify({'error': 'No se pudo procesar la imagen con Gemini'}), 500
+            return jsonify({'error': 'No se pudo procesar la imagen con OCR'}), 500
 
         return jsonify({
             'success': True,
