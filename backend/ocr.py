@@ -63,15 +63,12 @@ class LectorOCR:
                 imagen = imagen.convert('L')
             
             # Redimensionar a mayor resolucion para capturar mas detalle
-            max_dim = 2400
+            max_dim = 1600
             if max(imagen.size) > max_dim:
                 ratio = max_dim / max(imagen.size)
                 new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
                 imagen = imagen.resize(new_size, Image.LANCZOS)
                 print(f"📐 Imagen redimensionada a: {imagen.size}")
-            
-            # Umbralizar para limpiar ruido de fondo
-            imagen = imagen.point(lambda x: 0 if x < 140 else 255, '1')
             
             # Configuracion Tesseract: PSM 6 asume bloque de texto uniforme
             config = '--psm 6 --oem 3'
