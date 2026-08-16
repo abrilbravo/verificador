@@ -683,6 +683,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <script>
         /* ===== SIDEBAR ===== */
         function toggleSidebar() {
@@ -741,9 +742,20 @@
         function cargarImagen(input) {
             const file = input.files[0];
             if (!file) return;
+
+            document.getElementById('ocrFilename').textContent = file.name;
+            document.getElementById('zoneOcr').classList.add('loaded');
+
+            Swal.fire({
+                title: 'Procesando imagen con IA...',
+                html: '<div>Analizando con Gemini Flash...</div>',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
             const formData = new FormData();
             formData.append('file', file);
-            Swal.fire({ title: 'Procesando imagen (OCR)...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
             fetch('/api/cargar_imagen', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
@@ -753,14 +765,16 @@
                 repuestosOcr = (data.datos.repuestos || []).map(r => ({
                     codigo: r.codigo || '', cantidad: r.cantidad || '1.00', precio: r.precio || '0'
                 }));
-                document.getElementById('ocrFilename').textContent = file.name;
-                document.getElementById('zoneOcr').classList.add('loaded');
                 renderOcrTable();
                 document.getElementById('ocrSection').style.display = 'block';
                 actualizarBotones();
-                Swal.fire({ icon: 'success', title: 'OCR procesado', text: `${repuestosOcr.length} repuestos detectados`, timer: 1200, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'Imagen procesada', text: `${repuestosOcr.length} repuestos detectados`, timer: 1500, showConfirmButton: false });
             })
-            .catch(() => { Swal.close(); Swal.fire('Error', 'Error al procesar la imagen', 'error'); });
+            .catch(() => {
+                Swal.close();
+                Swal.fire('Error', 'Error al procesar la imagen', 'error');
+            });
+
             input.value = '';
         }
 

@@ -106,11 +106,14 @@ def cargar_imagen():
         file.save(temp_path)
         
         lector = LectorOCR()
-        lector.abrir_imagen(temp_path)
+        ok = lector.abrir_imagen(temp_path)
         datos = lector.extraer_datos()
         
         os.remove(temp_path)
         
+        if not ok:
+            return jsonify({'error': 'No se pudo procesar la imagen con Gemini'}), 500
+
         return jsonify({
             'success': True,
             'datos': datos,
