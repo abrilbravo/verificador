@@ -48,7 +48,7 @@ class LectorOCR:
         }
 
     def abrir_imagen(self, ruta_imagen):
-        """Extrae texto usando Tesseract (más liviano)"""
+        """Extrae texto usando Tesseract"""
         try:
             if not PYTESSERACT_DISPONIBLE:
                 print("❌ PyTesseract no disponible")
@@ -56,25 +56,34 @@ class LectorOCR:
 
             print("=== Usando PyTesseract OCR ===")
             
-            # Abrir la imagen con PIL
             imagen = Image.open(ruta_imagen)
             
-            # Reducir tamaño para ahorrar RAM
-            max_dim = 1200
+            # Convertir a escala de grises para mejor OCR
+            if imagen.mode != 'L':
+                imagen = imagen.convert('L')
+            
+            # Redimensionar a mayor resolucion para capturar mas detalle
+            max_dim = 2400
             if max(imagen.size) > max_dim:
-                imagen.thumbnail((max_dim, max_dim))
+                ratio = max_dim / max(imagen.size)
+                new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
+                imagen = imagen.resize(new_size, Image.LANCZOS)
                 print(f"📐 Imagen redimensionada a: {imagen.size}")
             
-            # Extraer texto con Tesseract
-            texto_completo = pytesseract.image_to_string(imagen, lang='spa')
+            # Umbralizar para limpiar ruido de fondo
+            imagen = imagen.point(lambda x: 0 if x < 140 else 255, '1')
+            
+            # Configuracion Tesseract: PSM 6 asume bloque de texto uniforme
+            config = '--psm 6 --oem 3'
+            texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
             
             if not texto_completo.strip():
                 print("⚠️ No se encontró texto en la imagen")
                 return False
 
             print(f"✅ Texto extraído: {len(texto_completo)} caracteres")
+            print(f"--- TEXTO OCR ---\n{texto_completo}\n------------------")
             
-            # Procesar el texto
             self.recibir_texto(texto_completo)
             self._extraer_datos_desde_texto()
             
@@ -99,6 +108,25 @@ class LectorOCR:
         self.lineas = [l for l in texto.split("\n") if l.strip()]
         return True
 
+    def _limpiar_precio_arg(self, texto_precio):
+        """Convierte precio formato argentino: 148.264,47 -> 148264.47"""
+        t = texto_precio.strip()
+        # Quitar espacios
+        t = t.replace(' ', '')
+        # Si tiene coma, es decimal argentino: 148.264,47
+        if ',' in t:
+            partes = t.split(',')
+            parte_decimal = partes[-1]  # centavos
+            parte_entera = ''.join(partes[:-1]).replace('.', '')  # quitar puntos de miles
+            t = parte_entera + '.' + parte_decimal
+        else:
+            # Sin coma: quitar puntos (son de miles)
+            t = t.replace('.', '')
+        try:
+            return float(t)
+        except:
+            return 0.0
+
     def _extraer_datos_desde_texto(self):
         """Extrae datos del texto usando regex"""
         texto = self.texto
@@ -118,37 +146,50 @@ class LectorOCR:
         if match:
             self.datos["siniestro"] = match.group(1)
         
-        patron_modelo = re.compile(r'MODELO\s*([A-Z0-9\s]+?)(?=\s+[A-Z]{2,3}\d{3}|$)', re.IGNORECASE)
+        patron_modelo = re.compile(r'MODELO\s*(.+?)(?=\s*PATENTE|\s*$)', re.IGNORECASE | re.DOTALL)
         match = patron_modelo.search(texto)
         if match:
             self.datos["modelo"] = match.group(1).strip()
         
-        patron_patente = re.compile(r'\b([A-Z]{2,3}\d{3}[A-Z]{0,2})\b')
+        patron_patente = re.compile(r'PATENTE\s*([A-Z0-9]+)', re.IGNORECASE)
         match = patron_patente.search(texto)
         if match:
-            self.datos["patente"] = match.group(1)
+            self.datos["patente"] = match.group(1).upper()
         
-        patron_codigo = re.compile(r'\b([A-Z0-9]{2,3}-[A-Z0-9]{3}-[A-Z0-9]{3,4}-[A-Z0-9]*(?:\s*-[A-Z0-9]+)?)\b')
-        codigos = patron_codigo.findall(texto)
+        # Codigos tipo VW: 5U0-953-455-C, 5U0-807-221-AC-GRU, 5U0-823-186, etc.
+        # Minimo 3 segmentos alfanumericos separados por guiones
+        patron_codigo = re.compile(r'\b([A-Z0-9]{2,4}(?:-[A-Z0-9]{2,5}){2,})\b')
+        codigos_raw = patron_codigo.findall(texto)
         
-        patron_precio = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})')
-        precios = patron_precio.findall(texto)
+        # Precios formato argentino: 148.264,47 o 1.234,56 o 420.330,58
+        patron_precio = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})\b')
+        precios_raw = patron_precio.findall(texto)
+        
+        # Tambien capturar precios sin miles: 18.677,69 o 3.471,07
+        if not precios_raw:
+            patron_precio = re.compile(r'(\d{1,3}(?:,\d{2})?)\b')
+            precios_raw = patron_precio.findall(texto)
+        
+        print(f"📋 Códigos encontrados ({len(codigos_raw)}): {codigos_raw}")
+        print(f"💰 Precios encontrados ({len(precios_raw)}): {precios_raw}")
         
         repuestos = []
-        for i, codigo in enumerate(codigos):
-            if i < len(precios):
-                codigo_limpio = codigo.replace("-", "").replace(" ", "")
-                precio_limpio = precios[i].replace(",", "")
-                
-                repuestos.append({
-                    "codigo": codigo_limpio,
-                    "descripcion": "",
-                    "nombre": "",
-                    "cantidad": "1.00",
-                    "precio": precio_limpio,
-                    "precio_num": float(precio_limpio),
-                    "precio_sin_iva": round(float(precio_limpio) / 1.21, 2)
-                })
+        for i, codigo in enumerate(codigos_raw):
+            precio_num = 0.0
+            precio_str = "0"
+            if i < len(precios_raw):
+                precio_num = self._limpiar_precio_arg(precios_raw[i])
+                precio_str = str(precio_num)
+            
+            repuestos.append({
+                "codigo": codigo.upper(),
+                "descripcion": "",
+                "nombre": "",
+                "cantidad": "1.00",
+                "precio": precio_str,
+                "precio_num": precio_num,
+                "precio_sin_iva": round(precio_num / 1.21, 2) if precio_num > 0 else 0
+            })
         
         self.datos["repuestos"] = repuestos
         print(f"✅ {len(repuestos)} repuestos encontrados")
