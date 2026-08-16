@@ -1,10 +1,10 @@
-# backend/ocr.py - Versión con RapidOCR + Reducción de calidad
+# backend/ocr.py - Versión con PyTesseract (más liviano)
 
 import re
 import os
 import sys
-import cv2
-import numpy as np
+import subprocess
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,13 +23,15 @@ except ImportError:
         PATRON_CODIGO_DIGITO,
     )
 
+# Intentar importar PyTesseract
 try:
-    from rapidocr_onnxruntime import RapidOCR
-    RAPID_OCR_DISPONIBLE = True
-    print("✅ RapidOCR disponible")
+    import pytesseract
+    from PIL import Image
+    PYTESSERACT_DISPONIBLE = True
+    print("✅ PyTesseract disponible")
 except ImportError:
-    RAPID_OCR_DISPONIBLE = False
-    print("❌ RapidOCR no instalado")
+    PYTESSERACT_DISPONIBLE = False
+    print("❌ PyTesseract no instalado")
 
 class LectorOCR:
     def __init__(self):
@@ -44,54 +46,35 @@ class LectorOCR:
             "remito": "",
             "repuestos": []
         }
-        self.ocr = None
-        if RAPID_OCR_DISPONIBLE:
-            self.ocr = RapidOCR()
-
-    def _reducir_imagen(self, imagen, max_dim=1500, calidad=80):
-        """Reduce la imagen automáticamente para ahorrar RAM"""
-        alto, ancho = imagen.shape[:2]
-        
-        if max(alto, ancho) > max_dim:
-            escala = max_dim / max(alto, ancho)
-            nuevo_ancho = int(ancho * escala)
-            nuevo_alto = int(alto * escala)
-            imagen = cv2.resize(imagen, (nuevo_ancho, nuevo_alto), interpolation=cv2.INTER_AREA)
-            print(f"📐 Imagen redimensionada: {ancho}x{alto} → {nuevo_ancho}x{nuevo_alto}")
-        
-        _, buffer = cv2.imencode('.jpg', imagen, [cv2.IMWRITE_JPEG_QUALITY, calidad])
-        imagen_comprimida = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
-        
-        tamaño_mb = len(buffer) / (1024 * 1024)
-        print(f"📦 Tamaño imagen: {tamaño_mb:.2f} MB")
-        
-        return imagen_comprimida
 
     def abrir_imagen(self, ruta_imagen):
-        """Extrae texto de la imagen con reducción automática de calidad"""
+        """Extrae texto usando Tesseract (más liviano)"""
         try:
-            if not RAPID_OCR_DISPONIBLE or self.ocr is None:
-                print("❌ RapidOCR no disponible")
+            if not PYTESSERACT_DISPONIBLE:
+                print("❌ PyTesseract no disponible")
                 return False
 
-            print("=== Iniciando OCR con reducción de calidad ===")
+            print("=== Usando PyTesseract OCR ===")
             
-            imagen = cv2.imread(ruta_imagen)
-            if imagen is None:
-                print(f"❌ No se pudo leer la imagen: {ruta_imagen}")
-                return False
-
-            imagen = self._reducir_imagen(imagen, max_dim=1500, calidad=80)
-
-            resultado, _ = self.ocr(imagen)
+            # Abrir la imagen con PIL
+            imagen = Image.open(ruta_imagen)
             
-            if not resultado:
+            # Reducir tamaño para ahorrar RAM
+            max_dim = 1200
+            if max(imagen.size) > max_dim:
+                imagen.thumbnail((max_dim, max_dim))
+                print(f"📐 Imagen redimensionada a: {imagen.size}")
+            
+            # Extraer texto con Tesseract
+            texto_completo = pytesseract.image_to_string(imagen, lang='spa')
+            
+            if not texto_completo.strip():
                 print("⚠️ No se encontró texto en la imagen")
                 return False
 
-            texto_completo = " ".join([item[0] for item in resultado])
             print(f"✅ Texto extraído: {len(texto_completo)} caracteres")
             
+            # Procesar el texto
             self.recibir_texto(texto_completo)
             self._extraer_datos_desde_texto()
             
