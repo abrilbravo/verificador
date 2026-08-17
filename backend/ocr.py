@@ -1,10 +1,10 @@
-# backend/ocr.py - Versión con PyTesseract (más liviano)
+# backend/ocr.py - Versión con Google Cloud Vision API
 
 import re
 import os
 import sys
-import subprocess
-import tempfile
+import base64
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -23,15 +23,14 @@ except ImportError:
         PATRON_CODIGO_DIGITO,
     )
 
-# Intentar importar PyTesseract
 try:
-    import pytesseract
-    from PIL import Image
-    PYTESSERACT_DISPONIBLE = True
-    print("✅ PyTesseract disponible")
+    import requests
+    REQUESTS_DISPONIBLE = True
 except ImportError:
-    PYTESSERACT_DISPONIBLE = False
-    print("❌ PyTesseract no instalado")
+    REQUESTS_DISPONIBLE = False
+
+GOOGLE_VISION_API_KEY = os.environ.get('GOOGLE_VISION_API_KEY', '')
+GOOGLE_VISION_URL = 'https://vision.googleapis.com/v1/images:annotate'
 
 class LectorOCR:
     def __init__(self):
@@ -48,31 +47,52 @@ class LectorOCR:
         }
 
     def abrir_imagen(self, ruta_imagen):
-        """Extrae texto usando Tesseract"""
+        """Extrae texto usando Google Cloud Vision API"""
         try:
-            if not PYTESSERACT_DISPONIBLE:
-                print("❌ PyTesseract no disponible")
+            if not REQUESTS_DISPONIBLE:
+                print("❌ requests no disponible")
                 return False
 
-            print("=== Usando PyTesseract OCR ===")
+            if not GOOGLE_VISION_API_KEY:
+                print("❌ GOOGLE_VISION_API_KEY no configurada")
+                return False
+
+            print("=== Usando Google Cloud Vision API ===")
             
-            imagen = Image.open(ruta_imagen)
+            with open(ruta_imagen, 'rb') as f:
+                imagen_bytes = f.read()
             
-            # Convertir a escala de grises para mejor OCR
-            if imagen.mode != 'L':
-                imagen = imagen.convert('L')
+            imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
             
-            # Redimensionar a mayor resolucion para capturar mas detalle
-            max_dim = 1600
-            if max(imagen.size) > max_dim:
-                ratio = max_dim / max(imagen.size)
-                new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
-                imagen = imagen.resize(new_size, Image.LANCZOS)
-                print(f"📐 Imagen redimensionada a: {imagen.size}")
+            payload = {
+                "requests": [{
+                    "image": {
+                        "content": imagen_b64
+                    },
+                    "features": [{
+                        "type": "TEXT_DETECTION",
+                        "maxResults": 1
+                    }]
+                }]
+            }
             
-            # Configuracion Tesseract: PSM 6 asume bloque de texto uniforme
-            config = '--psm 6 --oem 3'
-            texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
+            resp = requests.post(
+                f"{GOOGLE_VISION_URL}?key={GOOGLE_VISION_API_KEY}",
+                json=payload,
+                timeout=30
+            )
+            
+            if resp.status_code != 200:
+                print(f"❌ Error API Vision: {resp.status_code} - {resp.text}")
+                return False
+            
+            data = resp.json()
+            
+            if 'responses' not in data or not data['responses']:
+                print("⚠️ No se encontró texto en la imagen")
+                return False
+            
+            texto_completo = data['responses'][0].get('fullTextAnnotation', {}).get('text', '')
             
             if not texto_completo.strip():
                 print("⚠️ No se encontró texto en la imagen")
