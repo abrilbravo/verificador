@@ -55,25 +55,25 @@ class LectorOCR:
             
             imagen = Image.open(ruta_imagen)
             
-            # 1. Convertir a escala de grises (reduce 75% RAM)
+            # 1. Convertir a escala de grises
             imagen = imagen.convert('L')
             
-            # 2. Reducir a 800px max (muy chico para ahorrar RAM)
-            max_dim = 800
+            # 2. Reducir a 1000px max
+            max_dim = 1000
             if max(imagen.size) > max_dim:
                 ratio = max_dim / max(imagen.size)
                 new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
-                imagen = imagen.resize(new_size, Image.NEAREST)
+                imagen = imagen.resize(new_size, Image.LANCZOS)
                 print(f"📐 Redimensionada a: {imagen.size}")
             
-            # 3. Umbralizar: blanco y negro puro (elimina grises, ahorra RAM)
-            imagen = imagen.point(lambda x: 0 if x < 128 else 255, '1')
+            # 3. Ecualizar contraste sin perder texto
+            from PIL import ImageOps
+            imagen = ImageOps.autocontrast(imagen, cutoff=2)
             
-            # 4. Tesseract con config mínima para ahorrar RAM
-            config = '--psm 6 --oem 1 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.,:/ '
+            # 4. Tesseract con config para capturar todo
+            config = '--psm 3 --oem 3'
             texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
             
-            # Liberar memoria de la imagen procesada
             del imagen
             
             if not texto_completo.strip():
