@@ -59,20 +59,20 @@ class LectorOCR:
             # 1. Convertir a escala de grises
             imagen = imagen.convert('L')
             
-            # 2. Ecualizar contraste agresivamente
-            from PIL import ImageOps
+            # 2. Reducir a 1100px (justo para 500MB)
+            max_dim = 1100
+            if max(imagen.size) > max_dim:
+                ratio = max_dim / max(imagen.size)
+                new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
+                imagen = imagen.resize(new_size, Image.LANCZOS)
+                print(f"📐 Redimensionada a: {imagen.size}")
+            
+            # 3. Contraste agresivo para definir letras
+            from PIL import ImageOps, ImageEnhance
             imagen = ImageOps.autocontrast(imagen, cutoff=5)
+            imagen = ImageEnhance.Contrast(imagen).enhance(1.8)
             
-            # 3. Endurecer: multiplicar contraste
-            from PIL import ImageEnhance
-            enhancer = ImageEnhance.Contrast(imagen)
-            imagen = enhancer.enhance(2.0)
-            
-            # 4. Sharpen para definir bordes de letras
-            enhancer = ImageEnhance.Sharpness(imagen)
-            imagen = enhancer.enhance(2.0)
-            
-            # 5. Tesseract con detección de tabla
+            # 4. Tesseract
             config = '--psm 6 --oem 3'
             texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
             
