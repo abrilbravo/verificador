@@ -121,6 +121,32 @@ def cargar_imagen():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/procesar_texto_ocr', methods=['POST'])
+def procesar_texto_ocr():
+    try:
+        data = request.json
+        texto = data.get('texto', '')
+        
+        if not texto.strip():
+            return jsonify({'error': 'No se recibió texto'}), 400
+        
+        from backend.ocr import LectorOCR
+        lector = LectorOCR()
+        lector.recibir_texto(texto)
+        lector._extraer_datos_desde_texto()
+        datos = lector.extraer_datos()
+        
+        return jsonify({
+            'success': True,
+            'datos': datos,
+            'repuestos': datos.get('repuestos', [])
+        })
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/verificar', methods=['POST'])
 def api_verificar():
     try:
