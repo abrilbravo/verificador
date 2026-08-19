@@ -45,33 +45,35 @@ class LectorOCR:
         }
 
     def abrir_imagen(self, ruta_imagen):
-        """Extrae texto usando Tesseract ultra-optimizado para 500MB RAM"""
+        """Extrae texto usando Tesseract optimizado para 500MB RAM"""
         try:
             if not PYTESSERACT_DISPONIBLE:
                 print("❌ PyTesseract no disponible")
                 return False
 
-            print("=== Usando PyTesseract OCR (optimized 500MB) ===")
+            print("=== Usando PyTesseract OCR ===")
             
             imagen = Image.open(ruta_imagen)
+            print(f"📐 Tamaño original: {imagen.size}")
             
             # 1. Convertir a escala de grises
             imagen = imagen.convert('L')
             
-            # 2. Reducir a 1200px max
-            max_dim = 1200
-            if max(imagen.size) > max_dim:
-                ratio = max_dim / max(imagen.size)
-                new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
-                imagen = imagen.resize(new_size, Image.LANCZOS)
-                print(f"📐 Redimensionada a: {imagen.size}")
-            
-            # 3. Ecualizar contraste sin perder texto
+            # 2. Ecualizar contraste agresivamente
             from PIL import ImageOps
-            imagen = ImageOps.autocontrast(imagen, cutoff=2)
+            imagen = ImageOps.autocontrast(imagen, cutoff=5)
             
-            # 4. Tesseract con config para capturar todo
-            config = '--psm 3 --oem 3'
+            # 3. Endurecer: multiplicar contraste
+            from PIL import ImageEnhance
+            enhancer = ImageEnhance.Contrast(imagen)
+            imagen = enhancer.enhance(2.0)
+            
+            # 4. Sharpen para definir bordes de letras
+            enhancer = ImageEnhance.Sharpness(imagen)
+            imagen = enhancer.enhance(2.0)
+            
+            # 5. Tesseract con detección de tabla
+            config = '--psm 6 --oem 3'
             texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
             
             del imagen
