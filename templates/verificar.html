@@ -756,19 +756,47 @@
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                Tesseract.recognize(
-                    e.target.result,
-                    'spa',
-                    {
-                        logger: m => {
-                            if (m.status === 'recognizing text') {
-                                const pct = Math.round(m.progress * 100);
-                                const el = document.getElementById('ocrProgress');
-                                if (el) el.textContent = `Analizando... ${pct}%`;
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    let w = img.width;
+                    let h = img.height;
+                    const maxDim = 2400;
+                    if (Math.max(w, h) > maxDim) {
+                        const ratio = maxDim / Math.max(w, h);
+                        w = Math.round(w * ratio);
+                        h = Math.round(h * ratio);
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+
+                    const imageData = ctx.getImageData(0, 0, w, h);
+                    const d = imageData.data;
+                    for (let i = 0; i < d.length; i += 4) {
+                        let gray = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+                        gray = gray < 140 ? 0 : 255;
+                        d[i] = d[i+1] = d[i+2] = gray;
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+
+                    const processedImage = canvas.toDataURL('image/png');
+
+                    Tesseract.recognize(
+                        processedImage,
+                        'spa',
+                        {
+                            logger: m => {
+                                if (m.status === 'recognizing text') {
+                                    const pct = Math.round(m.progress * 100);
+                                    const el = document.getElementById('ocrProgress');
+                                    if (el) el.textContent = `Analizando... ${pct}%`;
+                                }
                             }
                         }
-                    }
-                ).then(({ data: { text } }) => {
+                    ).then(({ data: { text } }) => {
                     console.log('=== TEXTO OCR (navegador) ===');
                     console.log(text);
                     
@@ -798,6 +826,8 @@
                     Swal.close();
                     Swal.fire('Error', 'Error al procesar la imagen: ' + err.message, 'error');
                 });
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
             
