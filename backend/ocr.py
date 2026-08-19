@@ -72,8 +72,8 @@ class LectorOCR:
             imagen = ImageOps.autocontrast(imagen, cutoff=5)
             imagen = ImageEnhance.Contrast(imagen).enhance(1.8)
             
-            # 4. Tesseract
-            config = '--psm 6 --oem 3'
+            # 4. Tesseract con engine legacy (menos RAM)
+            config = '--psm 6 --oem 0'
             texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
             
             del imagen

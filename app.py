@@ -1,7 +1,5 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from flask_cors import CORS
 import os
-import json
 from datetime import datetime
 import shutil
 
@@ -13,7 +11,6 @@ from backend.util_funciones import formatear_siniestro, obtener_usuario, limpiar
 
 app = Flask(__name__)
 app.secret_key = 'vw-verificador-secret-key-2024'
-CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
@@ -29,7 +26,6 @@ if os.path.exists(ASSETS_DIR) and not os.listdir(STATIC_ASSETS):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-from backend.database_supabase import Database
 db = Database()
 
 @app.route('/assets/<path:filename>')
