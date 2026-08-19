@@ -1,10 +1,8 @@
-# backend/ocr.py - Versión con Google Cloud Vision API
+# backend/ocr.py - Tesseract optimizado para 500MB RAM
 
 import re
 import os
 import sys
-import base64
-import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -24,13 +22,13 @@ except ImportError:
     )
 
 try:
-    import requests
-    REQUESTS_DISPONIBLE = True
+    import pytesseract
+    from PIL import Image, ImageFilter
+    PYTESSERACT_DISPONIBLE = True
+    print("✅ PyTesseract disponible")
 except ImportError:
-    REQUESTS_DISPONIBLE = False
-
-GOOGLE_VISION_API_KEY = os.environ.get('GOOGLE_VISION_API_KEY', '')
-GOOGLE_VISION_URL = 'https://vision.googleapis.com/v1/images:annotate'
+    PYTESSERACT_DISPONIBLE = False
+    print("❌ PyTesseract no instalado")
 
 class LectorOCR:
     def __init__(self):
@@ -47,52 +45,36 @@ class LectorOCR:
         }
 
     def abrir_imagen(self, ruta_imagen):
-        """Extrae texto usando Google Cloud Vision API"""
+        """Extrae texto usando Tesseract ultra-optimizado para 500MB RAM"""
         try:
-            if not REQUESTS_DISPONIBLE:
-                print("❌ requests no disponible")
+            if not PYTESSERACT_DISPONIBLE:
+                print("❌ PyTesseract no disponible")
                 return False
 
-            if not GOOGLE_VISION_API_KEY:
-                print("❌ GOOGLE_VISION_API_KEY no configurada")
-                return False
-
-            print("=== Usando Google Cloud Vision API ===")
+            print("=== Usando PyTesseract OCR (optimized 500MB) ===")
             
-            with open(ruta_imagen, 'rb') as f:
-                imagen_bytes = f.read()
+            imagen = Image.open(ruta_imagen)
             
-            imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
+            # 1. Convertir a escala de grises (reduce 75% RAM)
+            imagen = imagen.convert('L')
             
-            payload = {
-                "requests": [{
-                    "image": {
-                        "content": imagen_b64
-                    },
-                    "features": [{
-                        "type": "TEXT_DETECTION",
-                        "maxResults": 1
-                    }]
-                }]
-            }
+            # 2. Reducir a 800px max (muy chico para ahorrar RAM)
+            max_dim = 800
+            if max(imagen.size) > max_dim:
+                ratio = max_dim / max(imagen.size)
+                new_size = (int(imagen.size[0] * ratio), int(imagen.size[1] * ratio))
+                imagen = imagen.resize(new_size, Image.NEAREST)
+                print(f"📐 Redimensionada a: {imagen.size}")
             
-            resp = requests.post(
-                f"{GOOGLE_VISION_URL}?key={GOOGLE_VISION_API_KEY}",
-                json=payload,
-                timeout=30
-            )
+            # 3. Umbralizar: blanco y negro puro (elimina grises, ahorra RAM)
+            imagen = imagen.point(lambda x: 0 if x < 128 else 255, '1')
             
-            if resp.status_code != 200:
-                print(f"❌ Error API Vision: {resp.status_code} - {resp.text}")
-                return False
+            # 4. Tesseract con config mínima para ahorrar RAM
+            config = '--psm 6 --oem 1 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.,:/ '
+            texto_completo = pytesseract.image_to_string(imagen, lang='spa', config=config)
             
-            data = resp.json()
-            
-            if 'responses' not in data or not data['responses']:
-                print("⚠️ No se encontró texto en la imagen")
-                return False
-            
-            texto_completo = data['responses'][0].get('fullTextAnnotation', {}).get('text', '')
+            # Liberar memoria de la imagen procesada
+            del imagen
             
             if not texto_completo.strip():
                 print("⚠️ No se encontró texto en la imagen")
@@ -128,16 +110,13 @@ class LectorOCR:
     def _limpiar_precio_arg(self, texto_precio):
         """Convierte precio formato argentino: 148.264,47 -> 148264.47"""
         t = texto_precio.strip()
-        # Quitar espacios
         t = t.replace(' ', '')
-        # Si tiene coma, es decimal argentino: 148.264,47
         if ',' in t:
             partes = t.split(',')
-            parte_decimal = partes[-1]  # centavos
-            parte_entera = ''.join(partes[:-1]).replace('.', '')  # quitar puntos de miles
+            parte_decimal = partes[-1]
+            parte_entera = ''.join(partes[:-1]).replace('.', '')
             t = parte_entera + '.' + parte_decimal
         else:
-            # Sin coma: quitar puntos (son de miles)
             t = t.replace('.', '')
         try:
             return float(t)
@@ -173,16 +152,12 @@ class LectorOCR:
         if match:
             self.datos["patente"] = match.group(1).upper()
         
-        # Codigos tipo VW: 5U0-953-455-C, 5U0-807-221-AC-GRU, 5U0-823-186, etc.
-        # Minimo 3 segmentos alfanumericos separados por guiones
         patron_codigo = re.compile(r'\b([A-Z0-9]{2,4}(?:-[A-Z0-9]{2,5}){2,})\b')
         codigos_raw = patron_codigo.findall(texto)
         
-        # Precios formato argentino: 148.264,47 o 1.234,56 o 420.330,58
         patron_precio = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})\b')
         precios_raw = patron_precio.findall(texto)
         
-        # Tambien capturar precios sin miles: 18.677,69 o 3.471,07
         if not precios_raw:
             patron_precio = re.compile(r'(\d{1,3}(?:,\d{2})?)\b')
             precios_raw = patron_precio.findall(texto)
