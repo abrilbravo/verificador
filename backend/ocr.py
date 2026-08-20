@@ -155,10 +155,11 @@ class LectorOCR:
         if match:
             self.datos["patente"] = match.group(1).upper()
         
-        patron_codigo_linea = re.compile(r'([A-Z0-9]{2,4}(?:\s*-\s*[A-Z0-9]{1,6}){1,5})')
+        patron_codigo_linea = re.compile(r'([A-Z0-9]{1,4}-\d{3}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,3})')
         patron_precio_linea = re.compile(r'(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})')
         
         repuestos = []
+        seen = set()
         for linea in lineas:
             cod_match = patron_codigo_linea.search(linea)
             if not cod_match:
@@ -167,7 +168,7 @@ class LectorOCR:
             codigo = cod_match.group(1).replace(' ', '').replace('--', '-').upper()
             
             partes = codigo.split('-')
-            if len(partes) < 2 or len(codigo) < 6:
+            if len(partes) < 3 or len(codigo) < 8:
                 continue
             
             skip_words = ['REMITO', 'ORDEN', 'SINIESTRO', 'MODELO', 'PATENTE', 'CENTRAL', 'DESCRIPCION',
@@ -183,6 +184,10 @@ class LectorOCR:
             code_parts = [p for p in partes if not p.isdigit() and len(p) > 1]
             if any(sw in ''.join(code_parts).upper() for sw in skip_words):
                 continue
+            
+            if codigo in seen:
+                continue
+            seen.add(codigo)
             
             precios_en_linea = patron_precio_linea.findall(linea)
             
@@ -208,17 +213,19 @@ class LectorOCR:
             })
         
         if not repuestos:
-            patron_codigo_simple = re.compile(r'([A-Z0-9]{2,4}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,4})')
+            patron_codigo_simple = re.compile(r'([A-Z0-9]{1,4}-\d{3}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,3})')
             codigos_raw = patron_codigo_simple.findall(texto)
             patron_precio_simple = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
             precios_raw = patron_precio_simple.findall(texto)
             
+            seen = set()
             codigos_filtrados = []
             for c in codigos_raw:
                 partes = c.split('-')
-                if len(partes) >= 2 and len(c) >= 6:
+                if len(partes) >= 3 and len(c) >= 8:
                     c_upper = c.upper()
-                    if not any(sw in c_upper for sw in skip_words):
+                    if c_upper not in seen and not any(sw in c_upper for sw in skip_words):
+                        seen.add(c_upper)
                         codigos_filtrados.append(c_upper)
             
             for i, codigo in enumerate(codigos_filtrados):
