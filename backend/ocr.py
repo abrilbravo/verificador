@@ -175,14 +175,20 @@ class LectorOCR:
                           'RECUPERAR', 'GENERAR', 'RESERVA', 'CONFIRMAR', 'CANCELAR', 'SALIR',
                           'NUEVO', 'DEMANDA', 'ORGANIZACION', 'EMPRESA', 'USUARIO', 'TERMINAL',
                           'CORREDOR', 'PERCEPCION', 'ZONA', 'COTIZACION', 'GRAVADO', 'IVA',
-                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION']
+                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION',
+                          'REDOR', 'T1057', 'CTA', 'DCTO', 'DESCUENTO', 'STOCK', 'BAJO',
+                          'LIMIT', 'REC', 'DESC', 'SIN', 'CON']
             
             codigo_upper = codigo.upper().replace(' ', '').replace('-', '')
             if any(sw in codigo_upper for sw in skip_words):
                 continue
             
-            partes_codigo = [p for p in codigo.upper().split('-') if p.strip()]
+            partes_codigo = [p.strip() for p in codigo.upper().split('-') if p.strip()]
             if len(partes_codigo) < 2:
+                continue
+            
+            tiene_prefijo_vw = bool(re.match(r'^[A-Z0-9]{2,5}$', partes_codigo[0]))
+            if not tiene_prefijo_vw:
                 continue
             
             tiene_digito = any(any(c.isdigit() for c in p) for p in partes_codigo)
@@ -197,7 +203,12 @@ class LectorOCR:
             precio_str = "0"
             precio_num = 0.0
             if precios_en_linea:
-                precio_num = self._limpiar_precio_arg(precios_en_linea[-1])
+                mejor_precio = precios_en_linea[0]
+                for p in precios_en_linea:
+                    val = self._limpiar_precio_arg(p)
+                    if val > precio_num:
+                        precio_num = val
+                        mejor_precio = p
                 precio_str = str(precio_num) if precio_num > 0 else "0"
             
             repuestos.append({
