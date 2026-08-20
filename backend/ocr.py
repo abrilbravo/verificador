@@ -113,13 +113,28 @@ class LectorOCR:
         """Convierte precio formato argentino: 148.264,47 -> 148264.47"""
         t = texto_precio.strip()
         t = t.replace(' ', '')
-        if ',' in t:
+        t = t.replace('$', '')
+        
+        if ',' in t and '.' in t:
+            if t.rindex(',') > t.rindex('.'):
+                partes = t.split(',')
+                parte_decimal = partes[-1]
+                parte_entera = ''.join(partes[:-1]).replace('.', '')
+                t = parte_entera + '.' + parte_decimal
+            else:
+                partes = t.split('.')
+                parte_decimal = partes[-1]
+                parte_entera = ''.join(partes[:-1]).replace(',', '')
+                t = parte_entera + '.' + parte_decimal
+        elif ',' in t:
             partes = t.split(',')
-            parte_decimal = partes[-1]
-            parte_entera = ''.join(partes[:-1]).replace('.', '')
-            t = parte_entera + '.' + parte_decimal
+            if len(partes) == 2 and len(partes[1]) <= 2:
+                t = partes[0].replace('.', '') + '.' + partes[1]
+            else:
+                t = ''.join(partes).replace('.', '')
         else:
             t = t.replace('.', '')
+        
         try:
             return float(t)
         except:
@@ -159,7 +174,10 @@ class LectorOCR:
         
         patron_codigo = re.compile(r'([A-Z0-9]{1,5}(?:\s*-\s*[A-Z0-9]{1,8}){1,5})')
         patron_precio = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
-        patron_precio_simple = re.compile(r'(\d{4,8},\d{2})')
+        patron_precio2 = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})')
+        patron_precio3 = re.compile(r'(\d{4,10}\.\d{2})')
+        patron_precio4 = re.compile(r'(\d{4,10},\d{2})')
+        patron_precio5 = re.compile(r'\$\s*(\d[\d.,]+)')
         
         for linea in lineas:
             cod_match = patron_codigo.search(linea)
@@ -198,7 +216,13 @@ class LectorOCR:
             
             precios_en_linea = patron_precio.findall(linea)
             if not precios_en_linea:
-                precios_en_linea = patron_precio_simple.findall(linea)
+                precios_en_linea = patron_precio2.findall(linea)
+            if not precios_en_linea:
+                precios_en_linea = patron_precio3.findall(linea)
+            if not precios_en_linea:
+                precios_en_linea = patron_precio4.findall(linea)
+            if not precios_en_linea:
+                precios_en_linea = patron_precio5.findall(linea)
             
             precio_str = "0"
             precio_num = 0.0

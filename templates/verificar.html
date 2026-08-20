@@ -720,7 +720,68 @@
         let ocrIndexSeleccionado = -1;
 
         function corregirOCRVW(texto) {
-            return texto;
+            let t = texto;
+
+            const PREFIJOS = {
+                '500': '5U0', '5UO': '5U0', '5OO': '5U0', '5O0': '5U0', '51J0': '5U0', '5U0': '5U0',
+                '520': '5Z0', '5ZO': '5Z0', '5Z0': '5Z0',
+                '200': '2C0', '2CO': '2C0', '2C0': '2C0', '2OO': '2C0',
+                '6R0': '6R0', '6RO': '6R0',
+                '6V0': '6V0', '6VO': '6V0',
+                '7L0': '7L0', '7LO': '7L0',
+                '3Q0': '3Q0', '3QO': '3Q0',
+                '1J0': '1J0', '1JO': '1J0',
+            };
+
+            t = t.replace(/\b(5[UO0O1J][0O])\b/gi, function(m) {
+                const key = m.toUpperCase().replace(/O/g, '0').replace(/J/g, '');
+                return PREFIJOS[m.toUpperCase()] || PREFIJOS[key] || '5U0';
+            });
+            t = t.replace(/\b(5[ZOC][0O])\b/gi, function(m) {
+                const up = m.toUpperCase();
+                if (up.startsWith('2')) return '2C0';
+                return '5Z0';
+            });
+            t = t.replace(/\b(2[C0O][0O])\b/gi, '2C0');
+
+            t = t.replace(/(\d)-ZZZ\b/gi, '$1-ZZZ');
+            t = t.replace(/(\d)-222\b/gi, '$1-ZZZ');
+            t = t.replace(/(\d)-[Zz][Zz]2\b/gi, '$1-ZZZ');
+            t = t.replace(/(\d)-2[Zz]Z\b/gi, '$1-ZZZ');
+            t = t.replace(/(\d)-Z2Z\b/gi, '$1-ZZZ');
+
+            t = t.replace(/(\d)-(\d)\s/g, function(m, before, suspect) {
+                if (suspect === '8') return before + '-B ';
+                if (suspect === '0') return before + '-O ';
+                return m;
+            });
+
+            t = t.replace(/(\d)-(\d{3})\b/g, function(m, seg2, seg3) {
+                if (/^222$/.test(seg3)) return seg2 + '-ZZZ';
+                if (/^888$/.test(seg3)) return seg2 + '-BBB';
+                return m;
+            });
+
+            const lineas = t.split('\n');
+            const skipWords = ['REMITO', 'ORDEN', 'SINIESTRO', 'MODELO', 'PATENTE', 'CENTRAL',
+                'REDOR', 'T1057', 'CTA', 'DCTO', 'DESCUENTO', 'STOCK', 'DEMANDA',
+                'ORGANIZACION', 'EMPRESA', 'USUARIO', 'TERMINAL', 'CORREDOR',
+                'PERCEPCION', 'ZONA', 'COTIZACION', 'GRAVADO', 'IVA', 'EXENTO'];
+            
+            t = lineas.map(function(linea) {
+                const codMatch = linea.match(/\b([A-Z0-9]{2,5}-[A-Z0-9-]{3,30})\b/i);
+                if (!codMatch) return linea;
+                
+                const cod = codMatch[1].toUpperCase();
+                const sinEspacios = cod.replace(/\s/g, '');
+                
+                if (sinEspacios.length < 6) return linea;
+                if (skipWords.some(function(sw) { return sinEspacios.includes(sw); })) return linea;
+                
+                return linea;
+            }).join('\n');
+
+            return t;
         }
 
         function cargarPdf(input) {
