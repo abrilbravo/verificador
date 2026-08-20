@@ -639,11 +639,12 @@
                         <th style="width:5%;text-align:center;">#</th>
                         <th>Código detectado</th>
                         <th style="width:10%;text-align:center;">Cant.</th>
-                        <th style="width:14%;text-align:right;">Precio</th>
+                        <th style="width:14%;text-align:right;">Precio Unit.</th>
+                        <th style="width:14%;text-align:right;">Precio Final</th>
                         <th style="width:8%;text-align:center;">Acc</th>
                     </tr></thead>
                     <tbody id="ocrBody">
-                        <tr><td colspan="5" class="cell-center" style="padding:14px;color:var(--text-muted);">Cargá una captura ADTR</td></tr>
+                        <tr><td colspan="6" class="cell-center" style="padding:14px;color:var(--text-muted);">Cargá una captura ADTR</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -822,7 +823,7 @@
                         if (data.error) { Swal.fire('Error', data.error, 'error'); return; }
                         datosOcr = data.datos;
                         repuestosOcr = (data.datos.repuestos || []).map(r => ({
-                            codigo: r.codigo || '', cantidad: r.cantidad || '1.00', precio: r.precio || '0'
+                            codigo: r.codigo || '', cantidad: r.cantidad || '1.00', precio: r.precio || '0', precio_final: r.precio_final || r.precio || '0'
                         }));
                         renderOcrTable();
                         document.getElementById('ocrSection').style.display = 'block';
@@ -850,7 +851,7 @@
             tbody.innerHTML = '';
             document.getElementById('scRepOcr').textContent = repuestosOcr.length;
             if (repuestosOcr.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="cell-center" style="padding:14px;color:var(--text-muted);">Sin repuestos detectados</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="cell-center" style="padding:14px;color:var(--text-muted);">Sin repuestos detectados</td></tr>';
                 return;
             }
             repuestosOcr.forEach((rep, i) => {
@@ -860,6 +861,7 @@
                     <td class="cell-code" data-ocr-idx="${i}" title="Doble click para editar">${rep.codigo}</td>
                     <td class="cell-center">${rep.cantidad}</td>
                     <td class="cell-price">$${rep.precio}</td>
+                    <td class="cell-price" style="color:var(--amber);">$${rep.precio_final || rep.precio}</td>
                     <td class="cell-center">
                         <button class="btn-mini blue" style="padding:3px 8px;font-size:10px;" onclick="editarRepOcrAt(${i})" title="Editar"><i class="fas fa-pen"></i></button>
                         <button class="btn-mini red" style="padding:3px 8px;font-size:10px;" onclick="eliminarRepOcrAt(${i})" title="Eliminar"><i class="fas fa-trash"></i></button>

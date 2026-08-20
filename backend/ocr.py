@@ -162,6 +162,9 @@ class LectorOCR:
         patron_precio2 = re.compile(r'(\d{4,8}\.\d{2})')
         patron_precio3 = re.compile(r'(\d{4,8},\d{2})')
         patron_precio4 = re.compile(r'(\d{1,3}(?:,\d{3})+\.\d{2})')
+        patron_precio5 = re.compile(r'\$\s*([\d.,]+)')
+        patron_precio6 = re.compile(r'(\d{1,3}(?:\.\d{3})+)')
+        patron_precio7 = re.compile(r'(\d{5,10})')
         
         for linea in lineas:
             cod_match = patron_codigo.search(linea)
@@ -196,33 +199,52 @@ class LectorOCR:
             if not (tiene_digito and tiene_letra):
                 continue
             
-            precios_en_linea = patron_precio.findall(linea)
-            if not precios_en_linea:
-                precios_en_linea = patron_precio2.findall(linea)
-            if not precios_en_linea:
-                precios_en_linea = patron_precio3.findall(linea)
-            if not precios_en_linea:
-                precios_en_linea = patron_precio4.findall(linea)
+            todos_los_precios = []
+            for p in patron_precio.findall(linea):
+                todos_los_precios.append(('arg', p))
+            for p in patron_precio4.findall(linea):
+                todos_los_precios.append(('us', p))
+            for p in patron_precio2.findall(linea):
+                todos_los_precios.append(('dot', p))
+            for p in patron_precio3.findall(linea):
+                todos_los_precios.append(('coma', p))
+            for p in patron_precio5.findall(linea):
+                todos_los_precios.append(('dollar', p))
             
-            precio_str = "0"
-            precio_num = 0.0
-            if precios_en_linea:
-                mejor_precio = precios_en_linea[0]
-                for p in precios_en_linea:
+            precio_unitario = 0.0
+            precio_final = 0.0
+            
+            precios_numericos = []
+            for tipo, p in todos_los_precios:
+                val = self._limpiar_precio_arg(p)
+                if val > 0:
+                    precios_numericos.append(val)
+            
+            if precios_numericos:
+                precio_unitario = max(precios_numericos)
+                precio_final = precios_numericos[-1]
+                if precio_final < precio_unitario and len(precios_numericos) > 1:
+                    precio_final = precios_numericos[-1]
+            
+            if precio_unitario == 0:
+                for p in patron_precio7.findall(linea):
                     val = self._limpiar_precio_arg(p)
-                    if val > precio_num:
-                        precio_num = val
-                        mejor_precio = p
-                precio_str = str(precio_num) if precio_num > 0 else "0"
+                    if 1000 < val < 9999999:
+                        precios_numericos.append(val)
+                if precios_numericos:
+                    precio_unitario = max(precios_numericos)
+                    precio_final = precios_numericos[-1]
             
             repuestos.append({
                 "codigo": codigo,
                 "descripcion": "",
                 "nombre": "",
                 "cantidad": "1.00",
-                "precio": precio_str,
-                "precio_num": precio_num,
-                "precio_sin_iva": round(precio_num / 1.21, 2) if precio_num > 0 else 0
+                "precio": str(precio_unitario) if precio_unitario > 0 else "0",
+                "precio_num": precio_unitario,
+                "precio_final": str(precio_final) if precio_final > 0 else "0",
+                "precio_final_num": precio_final,
+                "precio_sin_iva": round(precio_unitario / 1.21, 2) if precio_unitario > 0 else 0
             })
         
         self.datos["repuestos"] = repuestos
