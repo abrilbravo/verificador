@@ -159,7 +159,9 @@ class LectorOCR:
         
         patron_codigo = re.compile(r'([A-Z0-9]{1,5}(?:\s*-\s*[A-Z0-9]{1,8}){1,5})')
         patron_precio = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
-        patron_precio_simple = re.compile(r'(\d{4,8},\d{2})')
+        patron_precio2 = re.compile(r'(\d{4,8}\.\d{2})')
+        patron_precio3 = re.compile(r'(\d{4,8},\d{2})')
+        patron_precio4 = re.compile(r'(\d{1,3}(?:,\d{3})+\.\d{2})')
         
         for linea in lineas:
             cod_match = patron_codigo.search(linea)
@@ -186,6 +188,9 @@ class LectorOCR:
             if len(partes_codigo) < 2:
                 continue
             
+            if len(codigo.replace(' ', '').replace('-', '')) < 7:
+                continue
+            
             tiene_digito = any(any(c.isdigit() for c in p) for p in partes_codigo)
             tiene_letra = any(any(c.isalpha() for c in p) for p in partes_codigo)
             if not (tiene_digito and tiene_letra):
@@ -193,7 +198,11 @@ class LectorOCR:
             
             precios_en_linea = patron_precio.findall(linea)
             if not precios_en_linea:
-                precios_en_linea = patron_precio_simple.findall(linea)
+                precios_en_linea = patron_precio2.findall(linea)
+            if not precios_en_linea:
+                precios_en_linea = patron_precio3.findall(linea)
+            if not precios_en_linea:
+                precios_en_linea = patron_precio4.findall(linea)
             
             precio_str = "0"
             precio_num = 0.0
