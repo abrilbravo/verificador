@@ -155,7 +155,7 @@ class LectorOCR:
         if match:
             self.datos["patente"] = match.group(1).upper()
         
-        patron_codigo_linea = re.compile(r'([A-Z0-9]{1,4}-\d{3}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,3})')
+        patron_codigo_linea = re.compile(r'([A-Z0-9]{1,4}-\d{2,4}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,4})')
         patron_precio_linea = re.compile(r'(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})')
         
         repuestos = []
@@ -213,7 +213,7 @@ class LectorOCR:
             })
         
         if not repuestos:
-            patron_codigo_simple = re.compile(r'([A-Z0-9]{1,4}-\d{3}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,3})')
+            patron_codigo_simple = re.compile(r'([A-Z0-9]{1,4}-\d{2,4}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,4})')
             codigos_raw = patron_codigo_simple.findall(texto)
             patron_precio_simple = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
             precios_raw = patron_precio_simple.findall(texto)

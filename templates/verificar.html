@@ -722,34 +722,48 @@
         function corregirOCRVW(texto) {
             let t = texto;
             
-            t = t.replace(/\b(\d)[Oo](\d{2}-)/g, '$1U$2');
-            t = t.replace(/\b([25])[oO](\d)-/g, '$1U$2-');
+            const PREFIJOS_VW = ['5U0', '5Z0', '2C0', '5NA', '6R0', '6V0', '7L0', '3Q0', '1J0', '8D0', '8E0'];
             
-            t = t.replace(/(\d)[Bb](\d)/g, function(m, antes, despues) {
-                return antes + '8' + despues;
+            t = t.replace(/\b5[UuOo0]0\b/g, '5U0');
+            t = t.replace(/\b5[ZzOo0]0\b/g, '5Z0');
+            t = t.replace(/\b2[CcOo0]0\b/g, '2C0');
+            t = t.replace(/\b6[RrOo0]0\b/g, '6R0');
+            t = t.replace(/\b6[VvOo0]0\b/g, '6V0');
+            t = t.replace(/\b7[LlOo0]0\b/g, '7L0');
+            t = t.replace(/\b3[QqOo0]0\b/g, '3Q0');
+            t = t.replace(/\b1[JjOo0]0\b/g, '1J0');
+            t = t.replace(/\b8[DdOo0]0\b/g, '8D0');
+            t = t.replace(/\b8[EeOo0]0\b/g, '8E0');
+            
+            t = t.replace(/(\d)[Oo](\d)/g, '$10$2');
+            t = t.replace(/(\d)[Bb](\d)/g, '$18$2');
+            t = t.replace(/(\d)[IiLl](\d)/g, '$11$2');
+            t = t.replace(/(\d)[Ss](\d)/g, '$15$2');
+            t = t.replace(/(\d)[Zz](\d)/g, '$12$2');
+            t = t.replace(/(\d)[Gg](\d)/g, '$16$2');
+            t = t.replace(/(\d)[DdOo](\d)/g, '$10$2');
+            t = t.replace(/(\d)[Qq](\d)/g, '$19$2');
+            
+            const patronCodigoLoose = /\b(\d[A-Z]{0,2}\d?-\d{2,4}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,4})\b/gi;
+            
+            t = t.replace(patronCodigoLoose, function(match) {
+                let cod = match.toUpperCase();
+                const partes = cod.split('-');
+                if (partes.length < 3) return cod;
+                
+                let prefijo = partes[0];
+                if (/^\d{3}$/.test(prefijo)) {
+                    for (const p of PREFIJOS_VW) {
+                        if (prefijo[0] === p[0] && prefijo[2] === '0') {
+                            prefijo = p;
+                            break;
+                        }
+                    }
+                }
+                
+                partes[0] = prefijo;
+                return partes.join('-');
             });
-            
-            t = t.replace(/\b5[Uu]0/g, '5U0');
-            t = t.replace(/\b5[Zz]0/g, '5Z0');
-            t = t.replace(/\b2[Cc]0/g, '2C0');
-            
-            const lineas = t.split('\n');
-            const patronCodigo = /^.*?(\d[A-Z0-9]{0,3}-\d{3}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,3}).*$/i;
-            
-            t = lineas.map(linea => {
-                const match = linea.match(patronCodigo);
-                if (!match) return linea;
-                
-                let cod = match[1].toUpperCase();
-                
-                cod = cod.replace(/([0-9])[IiLl]([0-9])/g, '$11$2');
-                cod = cod.replace(/([0-9])[Ss]([0-9])/g, '$15$2');
-                cod = cod.replace(/([0-9])[Zz]([0-9])/g, '$12$2');
-                cod = cod.replace(/([0-9])[Gg]([0-9])/g, '$16$2');
-                cod = cod.replace(/([0-9])[Qq]([0-9])/g, '$19$2');
-                
-                return linea.replace(match[1], cod);
-            }).join('\n');
             
             return t;
         }
