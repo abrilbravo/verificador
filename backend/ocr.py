@@ -126,9 +126,9 @@ class LectorOCR:
             return 0.0
 
     def _extraer_datos_desde_texto(self):
-        """Extrae datos del texto usando regex - optimizado para tablas ERP"""
+        """Extrae repuestos de una tabla ERP - respeta códigos exactos"""
         texto = self.texto
-        lineas = [l.strip() for l in texto.split('\n') if l.strip()]
+        lineas = [l for l in texto.split('\n') if l.strip()]
         
         patron_remito = re.compile(r'REMITO\s*(\d{5,6})', re.IGNORECASE)
         match = patron_remito.search(texto)
@@ -155,94 +155,60 @@ class LectorOCR:
         if match:
             self.datos["patente"] = match.group(1).upper()
         
-        patron_codigo_linea = re.compile(r'([A-Z0-9]{1,4}-\d{2,4}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,4})')
-        patron_precio_linea = re.compile(r'(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})')
-        
         repuestos = []
-        seen = set()
+        
+        patron_codigo = re.compile(r'([A-Z0-9]{1,5}(?:\s*-\s*[A-Z0-9]{1,8}){1,5})')
+        patron_precio = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
+        patron_precio_simple = re.compile(r'(\d{4,8},\d{2})')
+        
         for linea in lineas:
-            cod_match = patron_codigo_linea.search(linea)
+            cod_match = patron_codigo.search(linea)
             if not cod_match:
                 continue
             
-            codigo = cod_match.group(1).replace(' ', '').replace('--', '-').upper()
+            codigo_raw = cod_match.group(1)
+            codigo = codigo_raw.strip()
             
-            partes = codigo.split('-')
-            if len(partes) < 3 or len(codigo) < 8:
+            skip_words = ['REMITO', 'ORDEN', 'SINIESTRO', 'MODELO', 'PATENTE', 'CENTRAL',
+                          'COMPROBANTE', 'NUMERO', 'IMPRESION', 'FECHA', 'TIPO', 'VENTA',
+                          'GRUPO', 'SISTEMA', 'CIRCUITO', 'CARGAR', 'CONSULTA', 'COMPROBANTES',
+                          'RECUPERAR', 'GENERAR', 'RESERVA', 'CONFIRMAR', 'CANCELAR', 'SALIR',
+                          'NUEVO', 'DEMANDA', 'ORGANIZACION', 'EMPRESA', 'USUARIO', 'TERMINAL',
+                          'CORREDOR', 'PERCEPCION', 'ZONA', 'COTIZACION', 'GRAVADO', 'IVA',
+                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION']
+            
+            codigo_upper = codigo.upper().replace(' ', '').replace('-', '')
+            if any(sw in codigo_upper for sw in skip_words):
                 continue
             
-            skip_words = ['REMITO', 'ORDEN', 'SINIESTRO', 'MODELO', 'PATENTE', 'CENTRAL', 'DESCRIPCION',
-                          'COMPROBANTE', 'NUMERO', 'IMPRESION', 'FECHA', 'TIPO', 'VENTA', 'GRUPO',
-                          'CTA', 'DIA', 'MES', 'ANIO', 'SISTEMA', 'CIRCUITO', 'CARGAR', 'CONSULTA',
-                          'COMPROBANTES', 'VER', 'RECUPERAR', 'GENERAR', 'RESERVA', 'CONFIRMAR',
-                          'CANCELAR', 'SALIR', 'NUEVO', 'BAJO', 'LIMIT', 'DEMANDA', 'STOCK',
-                          'ORGANIZACION', 'EMPRESA', 'USUARIO', 'TERMINAL', 'GESTION', 'CORREDOR',
-                          'PERCEPCION', 'ZONA', 'COTIZACION', 'GRAVADO', 'IVA', 'EXENTO',
-                          'DESC', 'REC', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'LISTON',
-                          'SIN', 'CON', 'CTA', 'DCTO', 'DESCUENTO']
-            
-            code_parts = [p for p in partes if not p.isdigit() and len(p) > 1]
-            if any(sw in ''.join(code_parts).upper() for sw in skip_words):
+            partes_codigo = [p for p in codigo.upper().split('-') if p.strip()]
+            if len(partes_codigo) < 2:
                 continue
             
-            if codigo in seen:
+            tiene_digito = any(any(c.isdigit() for c in p) for p in partes_codigo)
+            tiene_letra = any(any(c.isalpha() for c in p) for p in partes_codigo)
+            if not (tiene_digito and tiene_letra):
                 continue
-            seen.add(codigo)
             
-            precios_en_linea = patron_precio_linea.findall(linea)
+            precios_en_linea = patron_precio.findall(linea)
+            if not precios_en_linea:
+                precios_en_linea = patron_precio_simple.findall(linea)
             
-            precio_num = 0.0
             precio_str = "0"
+            precio_num = 0.0
             if precios_en_linea:
                 precio_num = self._limpiar_precio_arg(precios_en_linea[-1])
                 precio_str = str(precio_num) if precio_num > 0 else "0"
-            
-            cant_match = re.search(r'(\d+[,\.]\d{2})\s', linea[cod_match.end():])
-            cantidad = "1.00"
-            if cant_match:
-                cantidad = cant_match.group(1).replace(',', '.')
             
             repuestos.append({
                 "codigo": codigo,
                 "descripcion": "",
                 "nombre": "",
-                "cantidad": cantidad,
+                "cantidad": "1.00",
                 "precio": precio_str,
                 "precio_num": precio_num,
                 "precio_sin_iva": round(precio_num / 1.21, 2) if precio_num > 0 else 0
             })
-        
-        if not repuestos:
-            patron_codigo_simple = re.compile(r'([A-Z0-9]{1,4}-\d{2,4}-[A-Z0-9]{1,6}(?:-[A-Z0-9]{1,6}){0,4})')
-            codigos_raw = patron_codigo_simple.findall(texto)
-            patron_precio_simple = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
-            precios_raw = patron_precio_simple.findall(texto)
-            
-            seen = set()
-            codigos_filtrados = []
-            for c in codigos_raw:
-                partes = c.split('-')
-                if len(partes) >= 3 and len(c) >= 8:
-                    c_upper = c.upper()
-                    if c_upper not in seen and not any(sw in c_upper for sw in skip_words):
-                        seen.add(c_upper)
-                        codigos_filtrados.append(c_upper)
-            
-            for i, codigo in enumerate(codigos_filtrados):
-                precio_num = 0.0
-                precio_str = "0"
-                if i < len(precios_raw):
-                    precio_num = self._limpiar_precio_arg(precios_raw[i])
-                    precio_str = str(precio_num) if precio_num > 0 else "0"
-                repuestos.append({
-                    "codigo": codigo,
-                    "descripcion": "",
-                    "nombre": "",
-                    "cantidad": "1.00",
-                    "precio": precio_str,
-                    "precio_num": precio_num,
-                    "precio_sin_iva": round(precio_num / 1.21, 2) if precio_num > 0 else 0
-                })
         
         self.datos["repuestos"] = repuestos
         print(f"✅ {len(repuestos)} repuestos encontrados")
