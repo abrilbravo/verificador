@@ -175,7 +175,8 @@ class LectorOCR:
                           'RECUPERAR', 'GENERAR', 'RESERVA', 'CONFIRMAR', 'CANCELAR', 'SALIR',
                           'NUEVO', 'DEMANDA', 'ORGANIZACION', 'EMPRESA', 'USUARIO', 'TERMINAL',
                           'CORREDOR', 'PERCEPCION', 'ZONA', 'COTIZACION', 'GRAVADO', 'IVA',
-                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION']
+                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION',
+                          'REDOR', 'T1057']
             
             codigo_upper = codigo.upper().replace(' ', '').replace('-', '')
             if any(sw in codigo_upper for sw in skip_words):

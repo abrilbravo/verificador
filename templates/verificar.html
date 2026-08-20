@@ -720,7 +720,11 @@
         let ocrIndexSeleccionado = -1;
 
         function corregirOCRVW(texto) {
-            return texto;
+            let t = texto;
+            t = t.replace(/(\d-[A-Z0-9]+)-8\b/gi, function(m, p1) {
+                return p1 + '-B';
+            });
+            return t;
         }
 
         function cargarPdf(input) {
