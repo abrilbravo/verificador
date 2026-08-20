@@ -113,28 +113,13 @@ class LectorOCR:
         """Convierte precio formato argentino: 148.264,47 -> 148264.47"""
         t = texto_precio.strip()
         t = t.replace(' ', '')
-        t = t.replace('$', '')
-        
-        if ',' in t and '.' in t:
-            if t.rindex(',') > t.rindex('.'):
-                partes = t.split(',')
-                parte_decimal = partes[-1]
-                parte_entera = ''.join(partes[:-1]).replace('.', '')
-                t = parte_entera + '.' + parte_decimal
-            else:
-                partes = t.split('.')
-                parte_decimal = partes[-1]
-                parte_entera = ''.join(partes[:-1]).replace(',', '')
-                t = parte_entera + '.' + parte_decimal
-        elif ',' in t:
+        if ',' in t:
             partes = t.split(',')
-            if len(partes) == 2 and len(partes[1]) <= 2:
-                t = partes[0].replace('.', '') + '.' + partes[1]
-            else:
-                t = ''.join(partes).replace('.', '')
+            parte_decimal = partes[-1]
+            parte_entera = ''.join(partes[:-1]).replace('.', '')
+            t = parte_entera + '.' + parte_decimal
         else:
             t = t.replace('.', '')
-        
         try:
             return float(t)
         except:
@@ -174,10 +159,7 @@ class LectorOCR:
         
         patron_codigo = re.compile(r'([A-Z0-9]{1,5}(?:\s*-\s*[A-Z0-9]{1,8}){1,5})')
         patron_precio = re.compile(r'(\d{1,3}(?:\.\d{3})*,\d{2})')
-        patron_precio2 = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})')
-        patron_precio3 = re.compile(r'(\d{4,10}\.\d{2})')
-        patron_precio4 = re.compile(r'(\d{4,10},\d{2})')
-        patron_precio5 = re.compile(r'\$\s*(\d[\d.,]+)')
+        patron_precio_simple = re.compile(r'(\d{4,8},\d{2})')
         
         for linea in lineas:
             cod_match = patron_codigo.search(linea)
@@ -193,9 +175,7 @@ class LectorOCR:
                           'RECUPERAR', 'GENERAR', 'RESERVA', 'CONFIRMAR', 'CANCELAR', 'SALIR',
                           'NUEVO', 'DEMANDA', 'ORGANIZACION', 'EMPRESA', 'USUARIO', 'TERMINAL',
                           'CORREDOR', 'PERCEPCION', 'ZONA', 'COTIZACION', 'GRAVADO', 'IVA',
-                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION',
-                          'REDOR', 'T1057', 'CTA', 'DCTO', 'DESCUENTO', 'STOCK', 'BAJO',
-                          'LIMIT', 'REC', 'DESC', 'SIN', 'CON']
+                          'EXENTO', 'IMPUESTOS', 'PASANTES', 'PERFIL', 'SISTEMA', 'DESCRIPCION']
             
             codigo_upper = codigo.upper().replace(' ', '').replace('-', '')
             if any(sw in codigo_upper for sw in skip_words):
@@ -205,10 +185,6 @@ class LectorOCR:
             if len(partes_codigo) < 2:
                 continue
             
-            tiene_prefijo_vw = bool(re.match(r'^[A-Z0-9]{2,5}$', partes_codigo[0]))
-            if not tiene_prefijo_vw:
-                continue
-            
             tiene_digito = any(any(c.isdigit() for c in p) for p in partes_codigo)
             tiene_letra = any(any(c.isalpha() for c in p) for p in partes_codigo)
             if not (tiene_digito and tiene_letra):
@@ -216,13 +192,7 @@ class LectorOCR:
             
             precios_en_linea = patron_precio.findall(linea)
             if not precios_en_linea:
-                precios_en_linea = patron_precio2.findall(linea)
-            if not precios_en_linea:
-                precios_en_linea = patron_precio3.findall(linea)
-            if not precios_en_linea:
-                precios_en_linea = patron_precio4.findall(linea)
-            if not precios_en_linea:
-                precios_en_linea = patron_precio5.findall(linea)
+                precios_en_linea = patron_precio_simple.findall(linea)
             
             precio_str = "0"
             precio_num = 0.0
