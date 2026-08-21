@@ -1,212 +1,242 @@
-# backend/database_supabase.py
-import os
-import psycopg2
-import json
-from datetime import datetime
+# backend/parser_repuestos.py
+# Parser robusto de repuestos a partir del texto de los reportes.
+#
+# Soporta bloques como:
+#   Inspec: (Importado de insp. n° 2) Rep: 3C8853856F GRU -
+#   Inspec: (Importado de insp. n° 1) Rep: 2H0807184A+2h0807183a-a-
+#   Inspec: (Importado de insp. n° 1) Rep: 5U08536651NN -
+#   Inspec: cromo (Importado de insp. n° 1) Rep: Viene
+#   con la rejilla IZQ. -
+#   PRECIO: 29,601.00
+#   NOMBRE DE PIEZA: JGO COMPLETO DE SOPORTE
+#
+# Reglas:
+#   - El código es lo que va después de "Rep:" (se ignora el texto anterior).
+#   - Las filas pueden tener o no el campo "Inspec:" (se dividen por "Rep:").
+#   - Si hay varios repuestos juntos separados por "+", el precio se divide
+#     por la cantidad de repuestos y el resultado (sin IVA) se asigna a cada uno.
+#   - Los sufijos separados por espacio (GRU, 9B9, 041, 1NN, ...) se conservan
+#     como "-SUFIJO", aunque estén seguidos de una fecha (Fe Estimada).
+#   - Se eliminan fechas (DD-MM-AAAA) que la columna "Fe Estimada" deja dentro
+#     del texto de "Rep:", restos de casillas "-a-/-x-/-o-" y conectores "x".
+#   - Si después de "Rep:" no hay un código, se incluye igualmente la descripción
+#     con su precio y nombre de pieza.
 
-# Conexión a Supabase usando el pooler (puerto 6543, aws-0-sa-east-1.pooler.supabase.com).
-# El host directo db.<ref>.supabase.co (puerto 5432) NO funciona desde Render (red inalcanzable).
-# No se usa la variable DATABASE_URL de Render porque en el deploy apuntaba al host directo
-# y tiraba "Network is unreachable"; acá se fuerza el pooler que ya está verificado.
-DATABASE_URL = "postgresql://app_user.livkbbxiopwlzninzlmb:abril2008kawaii@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+import re
+
+IVA = 0.21
+
+PATRON_CODIGO = re.compile(r'[A-Z0-9]{9,}')
+PATRON_CODIGO_DIGITO = re.compile(r'[0-9][A-Z0-9]{8,}')
+_PATRON_CAMPO = r'(?:PRECIO|NOMBRE(?:\s+DE\s+PIEZA)?|CANT\w*|IMP\w*|TOTAL|CONFORME|Fecha\s*\S*)'
 
 
-class Database:
-    def __init__(self):
-        self._conn = None
-        self._cursor = None
-        self._error = None
+def limpiar_precio(texto):
+    """Convierte un precio (string o número) a float. Soporta 29,601.00 y 12.345,67."""
+    if texto is None:
+        return 0.0
+    t = re.sub(r'[^\d,.]', '', str(texto))
+    t = t.replace(',', '.')
+    partes = t.split('.')
+    if len(partes) > 2:
+        t = ''.join(partes[:-1]) + '.' + partes[-1]
+    try:
+        return float(t)
+    except:
+        return 0.0
 
-    def conectar(self):
-        """Conecta de forma diferida. Devuelve True si hay conexión activa."""
-        if self._conn is not None:
-            return True
 
-        database_url = DATABASE_URL
-        try:
-            self._conn = psycopg2.connect(database_url, connect_timeout=5)
-            self._conn.autocommit = False
-            self._cursor = self._conn.cursor()
-            self._crear_tablas()
-            self._conn.rollback()
-            self._error = None
-            return True
-        except Exception as e:
-            print(f"[Database] No se pudo conectar a la base: {e}")
-            self._error = str(e)
-            self._conn = None
-            self._cursor = None
-            return False
+def _limpiar_texto_rep(texto):
+    """Limpia el contenido del campo 'Rep:':
+    - quita fechas (27-07-2026, 31-08-2026, ...) que quedan dentro del texto,
+    - quita el resto de casilla '-a-/-x-/-o-' del final,
+    - no toca ninguna letra del codigo (la 'x' de 2H6823033DxGRU es parte del numero de pieza y se cuenta, sea mayuscula o minuscula),
+    - elimina guiones finales sueltos."""
+    t = str(texto)
+    t = re.sub(r'\d{1,2}-\d{1,2}-\d{4}', ' ', t)
+    t = re.sub(r'-[a-zox]-[\s-]*$', '', t, flags=re.IGNORECASE)
+    t = re.sub(r'\s*-\s*$', '', t)
+    return t.strip()
 
-    def _crear_tablas(self):
-        """Crear tabla si no existe (por si acaso). Si el rol no tiene permiso
-        para crear (Supabase pooler), solo informa y sigue."""
-        try:
-            self._cursor.execute("""
-                CREATE TABLE IF NOT EXISTS historial (
-                    id SERIAL PRIMARY KEY,
-                    fecha TEXT NOT NULL,
-                    hora TEXT NOT NULL,
-                    usuario TEXT NOT NULL,
-                    cliente TEXT NOT NULL,
-                    remito TEXT,
-                    orden TEXT,
-                    siniestro TEXT,
-                    patente TEXT,
-                    modelo TEXT,
-                    estado TEXT NOT NULL,
-                    errores INTEGER DEFAULT 0,
-                    coincidencia REAL DEFAULT 0,
-                    tiempo REAL DEFAULT 0,
-                    detalles TEXT,
-                    created_at TIMESTAMP DEFAULT NOW()
-                )
-            """)
-            self._conn.commit()
-        except Exception as e:
-            print(f"Error creando tabla (puede no tener permiso): {e}")
-            self._conn.rollback()
 
-    def guardar_verificacion(self, datos):
-        """Guardar una verificación en la base de datos"""
-        if not self.conectar():
-            return None
-        try:
-            detalles = datos.get('detalles', {})
-            if isinstance(detalles, dict):
-                detalles = json.dumps(detalles, ensure_ascii=False)
+def formatear_codigo(codigo):
+    """Formatea un código de repuesto VW a 3-3-3 (y el resto en grupos de a 3
+    desde el final, regla xxx-xxx-xxx-xx-xxx).
+    Ej: '3C8853856F' -> '3C8-853-856-F', '5U08536651NN' -> '5U0-853-665-1NN',
+        '2H6823033DXGRU' -> '2H6-823-033-DX-GRU'."""
+    codigo = re.sub(r'[^A-Z0-9]', '', str(codigo).upper())
+    if len(codigo) <= 3:
+        return codigo
+    if len(codigo) <= 9:
+        return '-'.join(codigo[i:i + 3] for i in range(0, len(codigo), 3))
+    base = codigo[:9]
+    resto = codigo[9:]
+    if len(resto) <= 3:
+        return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{resto}"
+    inicio = len(resto) % 3
+    if inicio == 0:
+        grupos = [resto[i:i + 3] for i in range(0, len(resto), 3)]
+    else:
+        grupos = [resto[:inicio]] + [resto[i:i + 3] for i in range(inicio, len(resto), 3)]
+    return f"{base[:3]}-{base[3:6]}-{base[6:9]}-{'-'.join(grupos)}"
 
-            query = """
-                INSERT INTO historial
-                (fecha, hora, usuario, cliente, remito, orden, siniestro,
-                 patente, modelo, estado, errores, coincidencia, tiempo, detalles)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id
-            """
 
-            valores = (
-                datos.get('fecha', datetime.now().strftime('%d/%m/%Y')),
-                datos.get('hora', datetime.now().strftime('%H:%M')),
-                datos.get('usuario', 'Sistema'),
-                datos.get('cliente', 'Sin cliente'),
-                datos.get('remito', ''),
-                datos.get('orden', ''),
-                datos.get('siniestro', ''),
-                datos.get('patente', ''),
-                datos.get('modelo', ''),
-                datos.get('estado', 'Correcto'),
-                datos.get('errores', 0),
-                datos.get('coincidencia', 0),
-                datos.get('tiempo', 0),
-                detalles
-            )
+def _extraer_sufijo(resto):
+    """Busca un sufijo corto (1-4 caracteres) al inicio de 'resto',
+    siempre que detrás no queden más alfanuméricos pegados."""
+    m = re.match(r'[^A-Z0-9]*([A-Z0-9]{1,4})(?:[^A-Z0-9]|$)', resto)
+    if not m:
+        return None
+    token = m.group(1)
+    if re.search(r'[A-Z0-9]', resto[m.end():]):
+        return None
+    return token
 
-            self._cursor.execute(query, valores)
-            self._conn.commit()
-            id_guardado = self._cursor.fetchone()[0]
-            return id_guardado
 
-        except Exception as e:
-            print(f"Error guardando verificación: {e}")
-            self._conn.rollback()
-            return None
+def extraer_codigos(texto, patron=PATRON_CODIGO_DIGITO):
+    """Extrae todos los códigos de repuesto presentes en un texto.
+    Si después del código hay un sufijo corto separado por espacio (GRU, 9B9,
+    041, 1NN, F, ...), lo agrega como '- -SUFIJO' (los espacios también cuentan).
+    Devuelve lista ya formateada."""
+    resultado = []
+    texto = _limpiar_texto_rep(texto).upper()
+    for m in re.finditer(patron, texto):
+        codigo = m.group(0)
+        resto = texto[m.end():]
+        sufijo = _extraer_sufijo(resto)
+        if sufijo:
+            codigo_limpio = re.sub(r'[^A-Z0-9]', '', codigo.upper())
+            if len(codigo_limpio) == 9:
+                resultado.append(f"{formatear_codigo(codigo)}- -{sufijo}")
+            else:
+                resultado.append(f"{formatear_codigo(codigo)}-{sufijo}")
+        else:
+            resultado.append(formatear_codigo(codigo))
+        else:
+            resultado.append(formatear_codigo(codigo))
+    return resultado
 
-    def obtener_historial(self, limite=100):
-        """Obtener historial de verificaciones"""
-        if not self.conectar():
-            return []
-        try:
-            query = """
-                SELECT id, fecha, hora, usuario, cliente, remito, orden,
-                       siniestro, patente, modelo, estado, errores,
-                       coincidencia, tiempo
-                FROM historial
-                ORDER BY created_at DESC
-                LIMIT %s
-            """
-            self._cursor.execute(query, (limite,))
-            resultados = self._cursor.fetchall()
 
-            historial = []
-            for row in resultados:
-                historial.append({
-                    'id': row[0],
-                    'fecha': row[1],
-                    'hora': row[2],
-                    'usuario': row[3],
-                    'cliente': row[4],
-                    'remito': row[5],
-                    'orden': row[6],
-                    'siniestro': row[7],
-                    'patente': row[8],
-                    'modelo': row[9],
-                    'estado': row[10],
-                    'errores': row[11],
-                    'coincidencia': row[12],
-                    'tiempo': row[13]
-                })
-            return historial
+def extraer_codigo(parte):
+    """Extrae el primer código de repuesto de un fragmento (o None si no hay)."""
+    codigos = extraer_codigos(parte)
+    return codigos[0] if codigos else None
 
-        except Exception as e:
-            print(f"Error obteniendo historial: {e}")
-            return []
 
-    def obtener_estadisticas(self):
-        """Obtener estadísticas de las verificaciones"""
-        vacio = {
-            'total': 0,
-            'con_errores': 0,
-            'correctas': 0,
-            'promedio_coincidencia': 0,
-            'top_clientes': []
-        }
-        if not self.conectar():
-            return vacio
+def dividir_en_bloques(texto):
+    """Divide el texto en bloques que contienen 'Rep:' (con o sin 'Inspec:').
+    Cada bloque arranca al inicio de la línea del marcador."""
+    if not texto or not texto.strip():
+        return []
+    markers = [m.start() for m in re.finditer(r'(?:Inspec\s*:|Rep\s*:)(?!\w)', texto, re.IGNORECASE)]
+    if not markers:
+        return [texto] if texto.strip() else []
+    inicios = []
+    for idx in markers:
+        nl = texto.rfind('\n', 0, idx)
+        inicio = nl + 1
+        if not inicios or inicios[-1] != inicio:
+            inicios.append(inicio)
+    bloques = []
+    for i, inicio in enumerate(inicios):
+        fin = inicios[i + 1] if i + 1 < len(inicios) else len(texto)
+        bloque = texto[inicio:fin]
+        if bloque.strip():
+            bloques.append(bloque)
+    return bloques
 
-        try:
-            stats = {}
 
-            self._cursor.execute("SELECT COUNT(*) FROM historial")
-            stats['total'] = self._cursor.fetchone()[0]
+def _recortar_hasta_campo(contenido):
+    """Recorta el contenido de 'Rep:' hasta el próximo campo conocido (PRECIO/NOMBRE/CANT...)."""
+    return re.split(
+        r'\s+' + _PATRON_CAMPO + r'\s*:',
+        contenido,
+        maxsplit=1,
+        flags=re.IGNORECASE
+    )[0]
 
-            self._cursor.execute(
-                "SELECT COUNT(*) FROM historial WHERE estado = 'Con errores'"
-            )
-            stats['con_errores'] = self._cursor.fetchone()[0]
 
-            self._cursor.execute(
-                "SELECT COUNT(*) FROM historial WHERE estado = 'Correcto'"
-            )
-            stats['correctas'] = self._cursor.fetchone()[0]
+def extraer_repuestos_de_contenido(contenido, precio=0.0, nombre=""):
+    """Convierte el contenido que va después de 'Rep:' en repuestos.
+    Si hay varios códigos con '+', divide el precio por la cantidad."""
+    contenido = _limpiar_texto_rep(contenido)
+    partes = [p for p in contenido.split('+') if p.strip()]
+    if not partes:
+        return []
 
-            self._cursor.execute(
-                "SELECT AVG(coincidencia) FROM historial WHERE coincidencia > 0"
-            )
-            avg = self._cursor.fetchone()[0]
-            stats['promedio_coincidencia'] = round(avg, 2) if avg else 0
+    cantidad_partes = len(partes)
+    precio_unitario = round(precio / cantidad_partes, 2) if cantidad_partes > 0 and precio else precio
 
-            self._cursor.execute("""
-                SELECT cliente, COUNT(*) as total
-                FROM historial
-                GROUP BY cliente
-                ORDER BY total DESC
-                LIMIT 5
-            """)
-            stats['top_clientes'] = self._cursor.fetchall()
+    repuestos = []
+    for parte in partes:
+        codigo = extraer_codigo(parte)
+        if codigo:
+            codigo_rep = codigo
+            descripcion = nombre
+        else:
+            codigo_rep = re.sub(r'\s+', ' ', parte.strip()).upper()
+            descripcion = re.sub(r'\s+', ' ', parte.strip()) if not nombre else nombre
 
-            return stats
+        repuestos.append({
+            'codigo': codigo_rep,
+            'descripcion': descripcion,
+            'nombre': nombre,
+            'cantidad': '1.00',
+            'precio': str(precio_unitario),
+            'precio_num': precio_unitario,
+            'precio_sin_iva': round(precio_unitario / (1 + IVA), 2)
+        })
+    return repuestos
 
-        except Exception as e:
-            print(f"Error obteniendo estadísticas: {e}")
-            return vacio
 
-    def cerrar(self):
-        try:
-            if self._cursor:
-                self._cursor.close()
-            if self._conn:
-                self._conn.close()
-        except:
-            pass
-        self._conn = None
-        self._cursor = None
+def parsear_bloque(bloque):
+    """Parsea un bloque 'Inspec: ... Rep: ...' y devuelve sus repuestos."""
+    m_rep = re.search(r'Rep\s*:\s*(.*)', bloque, re.IGNORECASE | re.DOTALL)
+    if not m_rep:
+        return []
+
+    contenido = m_rep.group(1)
+    contenido = _recortar_hasta_campo(contenido).strip()
+
+    precio = _extraer_precio_bloque(bloque)
+
+    nombre = ""
+    m_nombre = re.search(
+        r'NOMBRE(?:\s+DE\s+PIEZA)?\s*:\s*(.*?)(?=\s+(?:PRECIO|CANT\w*|IMP\w*)\s*:|\s*$)',
+        bloque,
+        re.IGNORECASE | re.DOTALL
+    )
+    if m_nombre:
+        nombre = m_nombre.group(1).strip()
+
+    return extraer_repuestos_de_contenido(contenido, precio, nombre)
+
+
+def _extraer_precio_bloque(bloque):
+    """Obtiene el precio del bloque. Si hay etiqueta 'PRECIO:', la usa.
+    Si no, toma el último número con formato de precio (xx.xx) que aparece en la
+    fila antes de 'Inspec:'/'Rep:' (es el 'Precio Or.')."""
+    m_precio = re.search(r'PRECIO\s*:\s*([0-9.,]+)', bloque, re.IGNORECASE)
+    if m_precio:
+        return limpiar_precio(m_precio.group(1))
+
+    anterior = re.split(r'(?:Inspec\s*:|Rep\s*:)', bloque, maxsplit=1, flags=re.IGNORECASE)[0]
+    if anterior:
+        numeros = re.findall(r'\d[\d.,]*\d', anterior)
+        precios = [n for n in numeros if re.search(r'[.,]\d{2}$', n)]
+        if precios:
+            return limpiar_precio(precios[-1])
+    return 0.0
+
+
+def parsear_repuestos(texto):
+    """Parsea todo el texto del reporte y devuelve la lista de repuestos (sin duplicados)."""
+    repuestos = []
+    vistos = set()
+    for bloque in dividir_en_bloques(texto):
+        for repuesto in parsear_bloque(bloque):
+            clave = re.sub(r'[^A-Z0-9]', '', repuesto['codigo'].upper())
+            if clave and clave not in vistos:
+                vistos.add(clave)
+                repuestos.append(repuesto)
+    return repuestos
