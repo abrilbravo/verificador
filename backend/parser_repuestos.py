@@ -105,7 +105,13 @@ def extraer_codigos(texto, patron=PATRON_CODIGO_DIGITO):
         resto = texto[m.end():]
         sufijo = _extraer_sufijo(resto)
         if sufijo:
-            resultado.append(f"{formatear_codigo(codigo)}- -{sufijo}")
+            codigo_limpio = re.sub(r'[^A-Z0-9]', '', codigo.upper())
+            # Si el codigo base tiene 9 chars, el cuarto grupo esta vacio -> - -SUFIJO
+            # Si tiene 10+ chars, ya tiene cuarto grupo propio -> -SUFIJO
+            if len(codigo_limpio) == 9:
+                resultado.append(f"{formatear_codigo(codigo)}- -{sufijo}")
+            else:
+                resultado.append(f"{formatear_codigo(codigo)}-{sufijo}")
         else:
             resultado.append(formatear_codigo(codigo))
     return resultado
