@@ -112,8 +112,6 @@ def extraer_codigos(texto, patron=PATRON_CODIGO_DIGITO):
                 resultado.append(f"{formatear_codigo(codigo)}-{sufijo}")
         else:
             resultado.append(formatear_codigo(codigo))
-        else:
-            resultado.append(formatear_codigo(codigo))
     return resultado
 
 
