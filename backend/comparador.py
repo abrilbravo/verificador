@@ -76,29 +76,32 @@ class ComparadorRemitos:
                 "encontrado": "No detectado"
             })
         
-        # Comparación de repuestos
-        pdf_repuestos = {self._norm(r.get("codigo", "")): r.get("codigo", "") for r in datos_pdf.get("repuestos", [])}
-        ocr_repuestos = {self._norm(r.get("codigo", "")): r.get("codigo", "") for r in datos_ocr.get("repuestos", [])}
-        
-        for cod_norm, cod_original_pdf in pdf_repuestos.items():
-            if cod_norm in ocr_repuestos:
+        # Comparación de repuestos (multiconjunto: si el PDF trae el mismo
+        # código dos veces, se esperan dos en ADTR y se cuentan las dos)
+        pdf_repuestos = [(self._norm(r.get("codigo", "")), r.get("codigo", ""))
+                         for r in datos_pdf.get("repuestos", [])]
+        ocr_norms = [self._norm(r.get("codigo", "")) for r in datos_ocr.get("repuestos", [])]
+        usados_ocr = [False] * len(ocr_norms)
+
+        for cod_norm, cod_original_pdf in pdf_repuestos:
+            idx_match = -1
+            if cod_norm:
+                for i, ocr_norm in enumerate(ocr_norms):
+                    if not usados_ocr[i] and self._codes_match(cod_norm, ocr_norm):
+                        idx_match = i
+                        break
+
+            if idx_match >= 0:
+                usados_ocr[idx_match] = True
                 coincidencias += 1
             else:
-                encontrado = False
-                for cod_norm_ocr in ocr_repuestos.keys():
-                    if self._codes_match(cod_norm, cod_norm_ocr):
-                        encontrado = True
-                        coincidencias += 1
-                        break
-                
-                if not encontrado:
-                    errores.append({
-                        "tipo": "Repuesto faltante",
-                        "codigo": cod_original_pdf,
-                        "esperado": cod_original_pdf,
-                        "encontrado": "No encontrado en ADTR"
-                    })
-        
+                errores.append({
+                    "tipo": "Repuesto faltante",
+                    "codigo": cod_original_pdf,
+                    "esperado": cod_original_pdf,
+                    "encontrado": "No encontrado en ADTR"
+                })
+
         total_items = len(campos) + len(pdf_repuestos)
         if total_items > 0:
             porcentaje = min((coincidencias / total_items) * 100, 100)

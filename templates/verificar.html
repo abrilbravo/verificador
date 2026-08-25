@@ -502,7 +502,7 @@
             <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
             <div class="brand-text">
                 <span class="title">VERIFICADOR</span>
-                <span class="sub">v3.0</span>
+                <span class="sub">v3.1</span>
             </div>
         </div>
 
@@ -1029,17 +1029,30 @@
             tbody.innerHTML = '';
 
             const norm = c => (c || '').toUpperCase().replace(/[\s\-_.]/g, '');
-            const pdfReps = {};
-            (datosPdf?.repuestos || []).forEach((r, i) => { pdfReps[norm(r.codigo)] = { rep: r, idx: i }; });
-            const ocrReps = {};
-            repuestosOcr.forEach((r, i) => { ocrReps[norm(r.codigo)] = { rep: r, idx: i }; });
 
-            const allCodes = new Set([...Object.keys(pdfReps), ...Object.keys(ocrReps)]);
+            /* Emparejamiento uno a uno (multiconjunto): si el PDF trae el mismo
+               código dos veces, se comparan las dos apariciones por separado. */
+            const pares = [];
+            const usadoOcr = new Array(repuestosOcr.length).fill(false);
+
+            (datosPdf?.repuestos || []).forEach((repPdf, i) => {
+                const n = norm(repPdf.codigo);
+                let matchIdx = -1;
+                for (let j = 0; j < repuestosOcr.length; j++) {
+                    if (!usadoOcr[j] && norm(repuestosOcr[j].codigo) === n) { matchIdx = j; break; }
+                }
+                if (matchIdx >= 0) usadoOcr[matchIdx] = true;
+                pares.push({ pdfIdx: i, ocrIdx: matchIdx });
+            });
+            repuestosOcr.forEach((r, j) => {
+                if (!usadoOcr[j]) pares.push({ pdfIdx: null, ocrIdx: j });
+            });
+
             let idx = 0;
 
-            allCodes.forEach(codNorm => {
-                const pdfItem = pdfReps[codNorm];
-                const ocrItem = ocrReps[codNorm];
+            pares.forEach(par => {
+                const pdfItem = par.pdfIdx !== null ? { rep: datosPdf.repuestos[par.pdfIdx], idx: par.pdfIdx } : null;
+                const ocrItem = (par.ocrIdx !== null && par.ocrIdx >= 0) ? { rep: repuestosOcr[par.ocrIdx], idx: par.ocrIdx } : null;
                 idx++;
 
                 let estado, rowClass;

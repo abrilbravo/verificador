@@ -4,7 +4,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 APP_NAME = "Verificador Inteligente de Remitos"
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.1.0"
 APP_ICON = os.path.join(BASE_DIR, "assets", "vw_logo.ico")
 APP_LOGO = os.path.join(BASE_DIR, "assets", "vw_logo.png")
 

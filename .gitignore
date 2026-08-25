@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 uploads/
 historial.db
+data/
 .venv/
 venv/
 .env

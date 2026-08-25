@@ -4,7 +4,10 @@ import psycopg2
 import json
 from datetime import datetime
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres.livkbbxiopwlzninzlmb:abril2008kawaii@aws-0-sa-east-1.pooler.supabase.com:5432/postgres")
+# La URL de la base se toma de la variable de entorno DATABASE_URL
+# (configurada en Render / en la máquina local). NUNCA escribir la
+# contraseña en el código.
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
 class Database:

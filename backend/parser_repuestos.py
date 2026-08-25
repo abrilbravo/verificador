@@ -17,6 +17,9 @@
 #     por la cantidad de repuestos y el resultado (sin IVA) se asigna a cada uno.
 #   - Los sufijos separados por espacio (GRU, 9B9, 041, 1NN, ...) se conservan
 #     como "-SUFIJO", aunque estén seguidos de una fecha (Fe Estimada).
+#     La palabra "SUP" NUNCA se incluye: solo indica la ubicación de la pieza.
+#   - Si el mismo número de pieza aparece más de una vez en la orden, se
+#     agregan todas las apariciones (no se eliminan duplicados).
 #   - Se eliminan fechas (DD-MM-AAAA) que la columna "Fe Estimada" deja dentro
 #     del texto de "Rep:", restos de casillas "-a-/-x-/-o-" y conectores "x".
 #   - Si después de "Rep:" no hay un código, se incluye igualmente la descripción
@@ -50,23 +53,36 @@ def _limpiar_texto_rep(texto):
     """Limpia el contenido del campo 'Rep:':
     - quita fechas (27-07-2026, 31-08-2026, ...) que quedan dentro del texto,
     - quita el resto de casilla '-a-/-x-/-o-' del final,
+    - quita la palabra 'SUP' (solo indica ubicacion de la pieza, no forma parte
+      del numero de pieza),
     - no toca ninguna letra del codigo (la 'x' de 2H6823033DxGRU es parte del numero de pieza y se cuenta, sea mayuscula o minuscula),
     - elimina guiones finales sueltos."""
     t = str(texto)
     t = re.sub(r'\d{1,2}-\d{1,2}-\d{4}', ' ', t)
+    t = re.sub(r'\bSUP\b', ' ', t, flags=re.IGNORECASE)
     t = re.sub(r'-[a-zox]-[\s-]*$', '', t, flags=re.IGNORECASE)
     t = re.sub(r'\s*-\s*$', '', t)
     return t.strip()
 
 
 def formatear_codigo(codigo):
-    """Formatea un código de repuesto VW a 3-3-3 (y el resto en grupos de a 3
-    desde el final, regla xxx-xxx-xxx-xx-xxx).
+    """Formatea un código de repuesto VW a grupos de a 3
+    (regla xxx-xxx-xxx-xx-xxx).
     Ej: '3C8853856F' -> '3C8-853-856-F', '5U08536651NN' -> '5U0-853-665-1NN',
-        '2H6823033DXGRU' -> '2H6-823-033-DX-GRU'."""
+        '2H6823033DXGRU' -> '2H6-823-033-DX-GRU'.
+    Códigos de accesorio que arrancan con 2+ letras se agrupan desde esas
+    letras: 'GJZW012R2' -> 'G-JZW-012-R2'."""
     codigo = re.sub(r'[^A-Z0-9]', '', str(codigo).upper())
     if len(codigo) <= 3:
         return codigo
+
+    m = re.match(r'[A-Z]{2,}', codigo)
+    if m and len(m.group(0)) < len(codigo):
+        tam = len(m.group(0)) % 3 or 3
+        resto = codigo[tam:]
+        grupos = [codigo[:tam]] + [resto[i:i + 3] for i in range(0, len(resto), 3)]
+        return '-'.join(grupos)
+
     if len(codigo) <= 9:
         return '-'.join(codigo[i:i + 3] for i in range(0, len(codigo), 3))
     base = codigo[:9]
@@ -88,6 +104,8 @@ def _extraer_sufijo(resto):
     if not m:
         return None
     token = m.group(1)
+    if token.upper() == 'SUP':
+        return None
     if re.search(r'[A-Z0-9]', resto[m.end():]):
         return None
     return token
@@ -174,8 +192,16 @@ def extraer_repuestos_de_contenido(contenido, precio=0.0, nombre=""):
             codigo_rep = codigo
             descripcion = nombre
         else:
-            codigo_rep = re.sub(r'\s+', ' ', parte.strip()).upper()
-            descripcion = re.sub(r'\s+', ' ', parte.strip()) if not nombre else nombre
+            texto_parte = re.sub(r'\s+', ' ', parte.strip()).upper()
+            # Codigo de una sola pieza tipo accesorio que empieza con letras
+            # (ej: GJZW012R2 -> G-JZW-012-R2), sin mas texto alrededor.
+            candidato = re.sub(r'[^A-Z0-9]', '', texto_parte)
+            if re.fullmatch(r'(?=.*[A-Z])(?=.*\d)[A-Z0-9]{6,14}', candidato or ''):
+                codigo_rep = formatear_codigo(candidato)
+                descripcion = nombre
+            else:
+                codigo_rep = texto_parte
+                descripcion = re.sub(r'\s+', ' ', parte.strip()) if not nombre else nombre
 
         repuestos.append({
             'codigo': codigo_rep,
@@ -230,13 +256,11 @@ def _extraer_precio_bloque(bloque):
 
 
 def parsear_repuestos(texto):
-    """Parsea todo el texto del reporte y devuelve la lista de repuestos (sin duplicados)."""
+    """Parsea todo el texto del reporte y devuelve la lista de repuestos.
+    Si una orden trae el mismo numero de pieza mas de una vez, se agregan
+    todas las apariciones (no se eliminan duplicados)."""
     repuestos = []
-    vistos = set()
     for bloque in dividir_en_bloques(texto):
         for repuesto in parsear_bloque(bloque):
-            clave = re.sub(r'[^A-Z0-9]', '', repuesto['codigo'].upper())
-            if clave and clave not in vistos:
-                vistos.add(clave)
-                repuestos.append(repuesto)
+            repuestos.append(repuesto)
     return repuestos

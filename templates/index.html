@@ -484,6 +484,49 @@
         }
         .table-scroll .empty i { margin-right: 6px; color: var(--primary); }
 
+        /* ===== TOOLBAR DE LA TABLA ===== */
+        .tabla-toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 12px 14px 0;
+            flex-shrink: 0;
+        }
+        .btn-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 9px;
+            font-family: 'VWHead', sans-serif;
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all .15s ease;
+            box-shadow: var(--shadow-soft);
+        }
+        .btn-mini i { font-size: 12px; }
+        .btn-mini:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+        .btn-mini.blue { color: var(--primary); }
+        .btn-mini.blue:hover { border-color: var(--primary); background: var(--primary-soft); }
+        .btn-mini.amber { color: var(--amber); }
+        .btn-mini.amber:hover { border-color: var(--amber); background: var(--amber-soft); }
+
+        /* ===== PIEZAS DESCARTADAS ===== */
+        tr.row-descartada td { color: #94A3B8 !important; }
+        tr.row-descartada:hover td { background: var(--surface-2); }
+        tr.row-descartada .codigo-text,
+        tr.row-descartada .desc-cell { text-decoration: line-through; }
+        tr.row-descartada .precio-cell { color: #94A3B8 !important; }
+        tr.row-descartada .row-num { background: var(--border); color: var(--text-muted); }
+        tr.row-descartada .cell-copy:not(.btn-descartar) { display: none !important; }
+        tr.row-descartada .btn-descartar { display: inline-flex !important; opacity: .75; color: var(--green); }
+
         /* ===== FOOTER / RESUMEN ===== */
         .footer-resumen {
             display: grid;
@@ -598,7 +641,7 @@
             <div class="vw-icon"><img src="/assets/vw_logo.png" alt="VW"></div>
             <div class="brand-text">
                 <span class="title">VERIFICADOR</span>
-                <span class="sub">v3.0</span>
+                <span class="sub">v3.1</span>
             </div>
         </div>
 
@@ -668,9 +711,9 @@
                 <span class="action-ico"><i class="fas fa-database"></i></span>
                 <span class="action-text"><b>DATOS</b><small>Ver / editar datos</small></span>
             </button>
-            <button class="action-card verde" onclick="copiarDatosAutoleader()">
+            <button class="action-card verde" onclick="copiarDatosAutodealer()">
                 <span class="action-ico"><i class="fas fa-file-export"></i></span>
-                <span class="action-text"><b>AUTOLEADER</b><small>Copiar datos para Autoleader</small></span>
+                <span class="action-text"><b>AUTODEALER</b><small>Copiar datos para Autodealer</small></span>
             </button>
         </section>
 
@@ -683,6 +726,7 @@
                 <div class="value">
                     <span id="remitoDisplay">-</span>
                     <button class="copy-mini" data-copy="remitoDisplay" title="Copiar"><i class="fas fa-copy"></i></button>
+                    <button class="copy-mini" data-clear="remitoDisplay" title="Eliminar número de remito (dejar en blanco)"><i class="fas fa-times"></i></button>
                 </div>
             </div>
             <div class="field">
@@ -717,6 +761,17 @@
 
         <!-- TABLA -->
         <section class="card card-tabla">
+            <div class="tabla-toolbar">
+                <button class="btn-mini blue" onclick="copiarTodosCodigos()" title="Copia todos los números de pieza, uno por línea (cada uno en una celda de Excel)">
+                    <i class="fas fa-copy"></i> Copiar códigos
+                </button>
+                <button class="btn-mini blue" onclick="copiarCodigosYPrecios()" title="Copia los códigos y precios s/IVA, uno debajo del otro, para pegar en Excel">
+                    <i class="fas fa-file-excel"></i> Copiar códigos y precios
+                </button>
+                <button class="btn-mini amber" onclick="agregarPiezaManual()" title="Agregar números de pieza y precios a mano (Enter después de cada uno)">
+                    <i class="fas fa-plus"></i> Agregar pieza
+                </button>
+            </div>
             <div class="table-scroll">
                 <table>
                     <thead>
@@ -804,6 +859,15 @@
         document.querySelectorAll('.copy-mini').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
+                if (this.dataset.clear) {
+                    const el = document.getElementById(this.dataset.clear);
+                    if (el) {
+                        el.textContent = '-';
+                        if (this.dataset.clear === 'remitoDisplay' && datosPdf) datosPdf.remito = '';
+                        mostrarNotificacion('Número de remito eliminado');
+                    }
+                    return;
+                }
                 const id = this.dataset.copy;
                 const el = document.getElementById(id);
                 if (el && el.textContent && el.textContent !== '-') {
@@ -818,9 +882,10 @@
             let limpio = codigo.trim().toUpperCase();
             limpio = limpio.replace(/--\d{2}-\d{2}-\d{4}$/, '');
             limpio = limpio.replace(/-\d{2}-\d{2}-\d{4}$/, '');
+            limpio = limpio.replace(/\bSUP\b/g, '');
             limpio = limpio.replace(/-{2,}/g, '-');
-            limpio = limpio.replace(/-+$/, '');
-            return limpio;
+            limpio = limpio.replace(/^[-\s]+|[-\s]+$/g, '');
+            return limpio.trim();
         }
 
         /* ===== PROCESAR PDF ===== */
@@ -861,11 +926,28 @@
                 actualizarTabla(repuestosFormateados);
                 actualizarResumen(repuestosFormateados);
 
+                asignarRemitoAutomatico();
+
                 Swal.fire({ icon: 'success', title: 'PDF cargado', text: `${repuestosFormateados.length} repuestos`, timer: 1200, showConfirmButton: false });
             })
             .catch(error => { Swal.close(); Swal.fire('Error', 'Error al procesar el PDF', 'error'); });
 
             input.value = '';
+        }
+
+        /* ===== NÚMERO DE REMITO AUTOMÁTICO ===== */
+        function asignarRemitoAutomatico() {
+            fetch('/api/remito/siguiente', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success && data.remito !== undefined) {
+                    const num = String(data.remito);
+                    document.getElementById('remitoDisplay').textContent = num;
+                    if (datosPdf) datosPdf.remito = num;
+                    mostrarNotificacion('Remito Nº ' + num);
+                }
+            })
+            .catch(() => {});
         }
 
         /* ===== TABLA ===== */
@@ -883,6 +965,7 @@
                 const tr = document.createElement('tr');
                 tr.dataset.index = index;
                 tr.setAttribute('tabindex', '0');
+                if (rep.descartado) tr.classList.add('row-descartada');
 
                 const precioSin = (rep.precio_sin_iva || 0);
 
@@ -891,11 +974,16 @@
                 tr.dataset.descripcion = rep.descripcion || '';
                 tr.dataset.cantidad = rep.cantidad || '1';
 
+                const btnDescartar = `<button class="cell-copy btn-descartar" title="${rep.descartado ? 'Restaurar pieza' : 'Descartar pieza'}"><i class="fas ${rep.descartado ? 'fa-rotate-left' : 'fa-ban'}"></i></button>`;
+                const btnBorrarManual = rep.manual ? `<button class="cell-copy btn-borrar-manual" title="Eliminar pieza manual"><i class="fas fa-trash"></i></button>` : '';
+
                 tr.innerHTML = `
                     <td class="index-cell"><span class="row-num">${index + 1}</span></td>
                     <td class="codigo-cell" data-col="1" title="${rep.codigo || ''}">
                         <span class="codigo-text">${rep.codigo || ''}</span>
                         <button class="cell-copy" data-copy="${rep.codigo || ''}" title="Copiar código"><i class="fas fa-copy"></i></button>
+                        ${btnDescartar}
+                        ${btnBorrarManual}
                     </td>
                     <td class="desc-cell" data-col="2" title="${rep.descripcion || ''}">${rep.descripcion || ''}</td>
                     <td class="cant-cell" data-col="3">${rep.cantidad || '1'}</td>
@@ -905,9 +993,29 @@
                 tr.querySelectorAll('.cell-copy').forEach(btn => {
                     btn.addEventListener('click', function(e) {
                         e.stopPropagation();
+                        if (!this.dataset.copy) return;
                         copiarTexto(this.dataset.copy, 'Copiado: ' + this.dataset.copy);
                     });
                 });
+
+                const btnDesc = tr.querySelector('.btn-descartar');
+                if (btnDesc) {
+                    btnDesc.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        alternarDescarte(index);
+                    });
+                }
+
+                const btnBorrar = tr.querySelector('.btn-borrar-manual');
+                if (btnBorrar) {
+                    btnBorrar.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        repuestosData.splice(index, 1);
+                        actualizarTabla(repuestosData);
+                        actualizarResumen(repuestosData);
+                        mostrarNotificacion('Pieza eliminada');
+                    });
+                }
 
                 tr.querySelectorAll('td[data-col]').forEach(td => {
                     td.addEventListener('click', function(e) {
@@ -918,6 +1026,7 @@
 
                     td.addEventListener('dblclick', function(e) {
                         e.stopPropagation();
+                        if (estaDescartada(tr)) { mostrarNotificacion('Pieza descartada: no se puede usar'); return; }
                         const col = parseInt(this.dataset.col) || 1;
                         if (col === 1) {
                             editarCodigoEnFila(this);
@@ -953,9 +1062,25 @@
             }
         }
 
+        function estaDescartada(tr) {
+            if (!tr) return false;
+            const idx = parseInt(tr.dataset.index);
+            return !isNaN(idx) && repuestosData[idx] && !!repuestosData[idx].descartado;
+        }
+
+        function alternarDescarte(idx) {
+            const rep = repuestosData[idx];
+            if (!rep) return;
+            rep.descartado = !rep.descartado;
+            actualizarTabla(repuestosData);
+            actualizarResumen(repuestosData);
+            mostrarNotificacion(rep.descartado ? 'Pieza descartada: ' + rep.codigo : 'Pieza restaurada: ' + rep.codigo);
+        }
+
         function copiarDesdeCelda(td) {
             const tr = td.closest('tr');
             if (!tr) return;
+            if (estaDescartada(tr)) { mostrarNotificacion('Pieza descartada: no se puede usar'); return; }
             const col = parseInt(td.dataset.col) || 1;
             let texto = '', mensaje = '';
 
@@ -1007,6 +1132,7 @@
 
         /* ============ NAVEGACIÓN CON TECLADO ============ */
         document.addEventListener('keydown', function(e) {
+            if (document.querySelector('.swal2-container')) return;
             const tbody = document.getElementById('repuestosBody');
             const filas = tbody.querySelectorAll('tr');
             if (filas.length === 0 || filas[0].querySelector('td[colspan]')) return;
@@ -1073,6 +1199,7 @@
         function actualizarResumen(repuestos) {
             let totalSinIva = 0, totalConIva = 0;
             repuestos.forEach(rep => {
+                if (rep.descartado) return;
                 const precio = rep.precio_sin_iva || 0;
                 const cantidad = parseFloat(rep.cantidad) || 1;
                 totalSinIva += precio * cantidad;
@@ -1080,6 +1207,91 @@
             });
             document.getElementById('totalSinIva').textContent = '$' + totalSinIva.toFixed(2);
             document.getElementById('totalConIva').textContent = '$' + totalConIva.toFixed(2);
+        }
+
+        /* ===== COPIAR TODOS LOS CÓDIGOS / CÓDIGOS Y PRECIOS ===== */
+        function repuestosActivos() {
+            return repuestosData.filter(r => !r.descartado);
+        }
+
+        function copiarTodosCodigos() {
+            const activos = repuestosActivos();
+            if (!activos.length) { Swal.fire('Info', 'No hay piezas para copiar', 'info'); return; }
+            const texto = activos.map(r => r.codigo).join('\r\n');
+            copiarTexto(texto, activos.length + ' códigos copiados (uno por celda)');
+        }
+
+        function copiarCodigosYPrecios() {
+            const activos = repuestosActivos();
+            if (!activos.length) { Swal.fire('Info', 'No hay piezas para copiar', 'info'); return; }
+            const lineas = [];
+            activos.forEach(r => {
+                lineas.push(r.codigo);
+                lineas.push((r.precio_sin_iva || 0).toFixed(2));
+            });
+            const texto = lineas.join('\r\n');
+            copiarTexto(texto, activos.length + ' códigos con precios copiados');
+        }
+
+        /* ===== AGREGAR PIEZA MANUALMENTE ===== */
+        function parsearPrecio(txt) {
+            if (!txt) return 0;
+            let t = String(txt).replace(/\$/g, '').replace(/\s/g, '');
+            if (!t) return 0;
+            const tieneComa = t.indexOf(',') >= 0;
+            const tienePunto = t.indexOf('.') >= 0;
+            if (tieneComa && tienePunto) {
+                if (t.lastIndexOf(',') > t.lastIndexOf('.')) t = t.replace(/\./g, '').replace(',', '.');
+                else t = t.replace(/,/g, '');
+            } else if (tieneComa) {
+                if (/^\d{1,3}(,\d{3})+$/.test(t)) t = t.replace(/,/g, '');
+                else t = t.replace(',', '.');
+            } else if (tienePunto) {
+                if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+            }
+            const n = parseFloat(t);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function agregarPiezaManual() {
+            Swal.fire({
+                title: 'Agregar pieza manualmente',
+                html: `
+                    <input id="manualCodigo" class="swal2-input" placeholder="Número de pieza (ej: G-JZW-012-R2)" style="margin-bottom:8px;text-transform:uppercase;" autocomplete="off">
+                    <input id="manualPrecio" class="swal2-input" placeholder="Precio s/IVA (ej: 29.601,00)" autocomplete="off">
+                    <div style="font-size:11px;color:#6B7A94;margin-top:4px;">Escribí el código y presioná <b>Enter</b> para agregar. Seguí cargando una por una o pulsá Cerrar para terminar.</div>
+                `,
+                width: 480,
+                showCancelButton: true,
+                confirmButtonText: 'Agregar',
+                cancelButtonText: 'Cerrar',
+                focusConfirm: false,
+                didOpen: () => { document.getElementById('manualCodigo').focus(); },
+                preConfirm: () => {
+                    const codigoRaw = document.getElementById('manualCodigo').value.trim().toUpperCase();
+                    const precioTxt = document.getElementById('manualPrecio').value.trim();
+                    const codigo = formatearCodigo(codigoRaw);
+                    if (!codigo) {
+                        Swal.showValidationMessage('El número de pieza no puede estar vacío');
+                        return false;
+                    }
+                    return { codigo: codigo, precio: parsearPrecio(precioTxt) };
+                }
+            }).then(result => {
+                if (!result.isConfirmed || !result.value) return;
+                repuestosData.push({
+                    codigo: result.value.codigo,
+                    descripcion: '',
+                    cantidad: '1',
+                    precio_num: result.value.precio,
+                    precio_sin_iva: result.value.precio,
+                    manual: true
+                });
+                actualizarTabla(repuestosData);
+                actualizarResumen(repuestosData);
+                mostrarNotificacion('Pieza agregada: ' + result.value.codigo);
+                agregarPiezaManual();
+            });
         }
 
         /* ===== COPIAR TEXTO ===== */
@@ -1156,8 +1368,14 @@
                 cancelButtonText: 'Cancelar',
                 didOpen: () => {
                     document.getElementById('btnCopiarDatos').addEventListener('click', () => {
-                        const leer = id => document.getElementById(id).value.trim() || '-';
-                        const texto = `REMITO: ${leer('editRemito')}\nORDEN: ${leer('editOrden')}\nSINIESTRO: ${leer('editSiniestro')}\nMODELO: ${leer('editModelo')}\nPATENTE: ${leer('editPatente')}`;
+                        const leer = id => document.getElementById(id).value.trim();
+                        const texto = construirTextoAutodealer(
+                            leer('editRemito'),
+                            leer('editOrden'),
+                            leer('editSiniestro'),
+                            leer('editModelo'),
+                            leer('editPatente')
+                        );
                         copiarTexto(texto, 'Datos copiados');
                     });
                 },
@@ -1180,10 +1398,36 @@
             });
         }
 
-        async function copiarDatosAutoleader() {
-            const get = id => document.getElementById(id).textContent;
-            const texto = `REMITO: ${get('remitoDisplay')}\nORDEN: ${get('ordenDisplay')}\nSINIESTRO: ${get('siniestroDisplay')}\nMODELO: ${get('modeloDisplay')}\nPATENTE: ${get('patenteDisplay')}`;
-            await copiarTexto(texto, 'Datos copiados para Autoleader');
+        /* ===== FORMATO FIJO AUTODEALER ===== */
+        /* Cada campo va en una línea propia, separadas por \r\n (CRLF) para que
+           el formato no se desordene en Windows 7 / Bloc de notas. Los valores
+           se "aplanan" (sin saltos ni espacios dobles) para que ningún dato
+           rompa la estructura. */
+        function valorPlano(id) {
+            const t = ((document.getElementById(id) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+            return t === '' ? '-' : t;
+        }
+
+        function construirTextoAutodealer(remito, orden, siniestro, modelo, patente) {
+            const plano = v => (v || '').replace(/\s+/g, ' ').trim() || '-';
+            return [
+                'REMITO: ' + plano(remito),
+                'ORDEN: ' + plano(orden),
+                'SINIESTRO: ' + plano(siniestro),
+                'MODELO: ' + plano(modelo),
+                'PATENTE: ' + plano(patente)
+            ].join('\r\n');
+        }
+
+        async function copiarDatosAutodealer() {
+            const texto = construirTextoAutodealer(
+                valorPlano('remitoDisplay'),
+                valorPlano('ordenDisplay'),
+                valorPlano('siniestroDisplay'),
+                valorPlano('modeloDisplay'),
+                valorPlano('patenteDisplay')
+            );
+            await copiarTexto(texto, 'Datos copiados para Autodealer');
         }
     </script>
 </body>

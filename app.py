@@ -7,6 +7,7 @@ from backend.pdf import LectorPDF
 from backend.ocr import LectorOCR
 from backend.comparador import ComparadorRemitos
 from backend.database_supabase import Database
+from backend.contador_remito import obtener_remito_actual, siguiente_remito, fijar_remito
 from backend.util_funciones import formatear_siniestro, obtener_usuario, limpiar_precio, sacar_iva, formatear_precio
 
 app = Flask(__name__)
@@ -37,11 +38,38 @@ def index():
     return render_template('index.html', 
                          usuario=obtener_usuario(),
                          app_name="Verificador Inteligente de Remitos",
-                         version="3.0.0")
+                         version="3.1.0")
 
 @app.route('/verificar')
 def verificar():
     return render_template('verificar.html', usuario=obtener_usuario())
+
+@app.route('/api/remito/actual', methods=['GET'])
+def remito_actual():
+    """Ultimo numero de remito entregado (sin incrementar)."""
+    return jsonify({'success': True, 'remito': obtener_remito_actual()})
+
+@app.route('/api/remito/siguiente', methods=['POST'])
+def remito_siguiente():
+    """Entrega el proximo numero de remito (incrementa en 1).
+    Seguro si varias personas cargan PDFs al mismo tiempo."""
+    try:
+        return jsonify({'success': True, 'remito': siguiente_remito()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/remito/fijar', methods=['POST'])
+def remito_fijar():
+    """Fija manualmente el contador de remito (correccion administrativa)."""
+    try:
+        data = request.json or {}
+        valor = int(data.get('valor'))
+        fijar_remito(valor)
+        return jsonify({'success': True, 'remito': valor})
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Valor invalido'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/cargar_pdf', methods=['POST'])
 def cargar_pdf():
@@ -252,38 +280,34 @@ def generar_reporte_detalle(datos_pdf, datos_ocr, resultado):
                 'ocr': 'No detectado'
             })
     
-    pdf_repuestos = {r.get('codigo', '').upper().replace('-', '').replace(' ', ''): r 
-                     for r in datos_pdf.get('repuestos', [])}
-    ocr_repuestos = {r.get('codigo', '').upper().replace('-', '').replace(' ', ''): r 
-                     for r in datos_ocr.get('repuestos', [])}
-    
-    for cod_pdf, rep_pdf in pdf_repuestos.items():
-        if cod_pdf in ocr_repuestos:
+    pdf_repuestos = [(r.get('codigo', '').upper().replace('-', '').replace(' ', ''), r)
+                     for r in datos_pdf.get('repuestos', [])]
+    ocr_repuestos = [r.get('codigo', '').upper().replace('-', '').replace(' ', '')
+                     for r in datos_ocr.get('repuestos', [])]
+    usados_ocr = [False] * len(ocr_repuestos)
+
+    for cod_pdf, rep_pdf in pdf_repuestos:
+        idx_match = -1
+        if cod_pdf:
+            for i, cod_ocr in enumerate(ocr_repuestos):
+                if not usados_ocr[i] and comparador._codes_match(cod_pdf, cod_ocr):
+                    idx_match = i
+                    break
+        if idx_match >= 0:
+            usados_ocr[idx_match] = True
             reporte['problemas'].append({
                 'tipo': 'OK',
                 'campo': 'REPUESTO',
                 'pdf': rep_pdf.get('codigo', cod_pdf),
-                'ocr': ocr_repuestos[cod_pdf].get('codigo', cod_pdf)
+                'ocr': datos_ocr.get('repuestos', [])[idx_match].get('codigo', ocr_repuestos[idx_match])
             })
         else:
-            encontrado = False
-            for cod_ocr in ocr_repuestos:
-                if comparador._codes_match(cod_pdf, cod_ocr):
-                    encontrado = True
-                    reporte['problemas'].append({
-                        'tipo': 'OK',
-                        'campo': 'REPUESTO',
-                        'pdf': rep_pdf.get('codigo', cod_pdf),
-                        'ocr': ocr_repuestos[cod_ocr].get('codigo', cod_ocr)
-                    })
-                    break
-            if not encontrado:
-                reporte['problemas'].append({
-                    'tipo': 'FALTA',
-                    'campo': 'REPUESTO',
-                    'pdf': rep_pdf.get('codigo', cod_pdf),
-                    'ocr': 'No encontrado'
-                })
+            reporte['problemas'].append({
+                'tipo': 'FALTA',
+                'campo': 'REPUESTO',
+                'pdf': rep_pdf.get('codigo', cod_pdf),
+                'ocr': 'No encontrado'
+            })
     
     problemas_lista = [p for p in reporte['problemas'] if p['tipo'] not in ['OK']]
     if not problemas_lista:
