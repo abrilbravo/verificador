@@ -1331,7 +1331,8 @@
             const html = `
                 <div style="text-align:left;display:grid;gap:6px;">
                     <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Remito</label>
-                    <input id="editRemito" class="swal2-input" style="margin:0;" value="${escapeAttr(get('remitoDisplay'))}">
+                    <input id="editRemito" class="swal2-input" style="margin:0;" value="${escapeAttr(get('remitoDisplay'))}" placeholder="Ej: 11555">
+                    <div style="font-size:10px;color:#6B7A94;margin:-4px 0 4px;text-align:left;">Poné acá el número actual (ej: 11555). Los próximos PDFs siguen con 11556, 11557...</div>
                     <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Orden</label>
                     <input id="editOrden" class="swal2-input" style="margin:0;" value="${escapeAttr(get('ordenDisplay'))}">
                     <label style="font-size:11px;font-weight:700;color:#6B7A94;text-transform:uppercase;margin:0;">Siniestro</label>
@@ -1379,8 +1380,30 @@
                     document.getElementById(id).textContent = v[map[id]] || '-';
                     if (datosPdf) datosPdf[map[id]] = v[map[id]];
                 });
+
+                /* Si el remito es un numero, queda como base del contador:
+                   el proximo PDF que se cargue usa ese valor + 1. */
+                const remitoNuevo = (v.remito || '').trim();
+                if (/^\d+$/.test(remitoNuevo)) {
+                    sincronizarContadorRemito(parseInt(remitoNuevo, 10));
+                }
                 mostrarNotificacion('Datos actualizados');
             });
+        }
+
+        function sincronizarContadorRemito(valor) {
+            fetch('/api/remito/fijar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ valor: valor })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    mostrarNotificacion('Próximo remito automático: ' + (valor + 1));
+                }
+            })
+            .catch(() => {});
         }
 
         /* ===== FORMATO FIJO AUTODEALER ===== */
