@@ -765,9 +765,6 @@
                 <button class="btn-mini blue" onclick="copiarTodosCodigos()" title="Copia todos los números de pieza, uno por línea (cada uno en una celda de Excel)">
                     <i class="fas fa-copy"></i> Copiar códigos
                 </button>
-                <button class="btn-mini blue" onclick="copiarCodigosYPrecios()" title="Copia los códigos y precios s/IVA, uno debajo del otro, para pegar en Excel">
-                    <i class="fas fa-file-excel"></i> Copiar códigos y precios
-                </button>
                 <button class="btn-mini amber" onclick="agregarPiezaManual()" title="Agregar números de pieza y precios a mano (Enter después de cada uno)">
                     <i class="fas fa-plus"></i> Agregar pieza
                 </button>
@@ -1219,18 +1216,6 @@
             if (!activos.length) { Swal.fire('Info', 'No hay piezas para copiar', 'info'); return; }
             const texto = activos.map(r => r.codigo).join('\r\n');
             copiarTexto(texto, activos.length + ' códigos copiados (uno por celda)');
-        }
-
-        function copiarCodigosYPrecios() {
-            const activos = repuestosActivos();
-            if (!activos.length) { Swal.fire('Info', 'No hay piezas para copiar', 'info'); return; }
-            const lineas = [];
-            activos.forEach(r => {
-                lineas.push(r.codigo);
-                lineas.push((r.precio_sin_iva || 0).toFixed(2));
-            });
-            const texto = lineas.join('\r\n');
-            copiarTexto(texto, activos.length + ' códigos con precios copiados');
         }
 
         /* ===== AGREGAR PIEZA MANUALMENTE ===== */
